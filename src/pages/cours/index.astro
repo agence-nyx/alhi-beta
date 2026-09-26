@@ -1,0 +1,102 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { loadAllCourses } from "../../lib/data.mjs";
+
+const base = import.meta.env.BASE_URL;
+const allCourses = loadAllCourses();
+
+const filieres = [...new Set(allCourses.map((c) => c.filiere))].sort();
+const nomsCours = [...new Set(allCourses.map((c) => c.intitule))].sort();
+
+// On serialise les cours pour le filtrage cote client (island vanilla JS).
+const coursesJson = JSON.stringify(
+  allCourses.map((c) => ({
+    filiere: c.filiere,
+    intitule: c.intitule,
+    annee: c.annee,
+    period: c.period,
+    volumeHoraire: c.volumeHoraire,
+    hasPdf: c.hasPdf,
+    pdfUrl: c.pdfRelPath ? `${base}/data/${encodeURI(c.pdfRelPath)}` : null,
+  }))
+);
+---
+
+<Layout title="Cours" protected={true}>
+  <h1>Section Cours</h1>
+  <p>
+    Recherche transversale, independante des annees et promotions. Filtre par
+    filiere et/ou par intitule de cours.
+  </p>
+
+  <div class="cours-selector">
+    <label>
+      Filiere
+      <select id="filter-filiere">
+        <option value="">Toutes</option>
+        {filieres.map((f) => <option value={f}>{f}</option>)}
+      </select>
+    </label>
+
+    <label>
+      Cours
+      <select id="filter-cours">
+        <option value="">Tous</option>
+        {nomsCours.map((n) => <option value={n}>{n}</option>)}
+      </select>
+    </label>
+  </div>
+
+  <div id="cours-results" class="cours-results"></div>
+
+  <script define:vars={{ coursesJson }} is:inline>
+    var allCourses = JSON.parse(coursesJson);
+    var filiereSelect = document.getElementById("filter-filiere");
+    var coursSelect = document.getElementById("filter-cours");
+    var resultsEl = document.getElementById("cours-results");
+
+    function render() {
+      var filiere = filiereSelect.value;
+      var cours = coursSelect.value;
+
+      var filtered = allCourses.filter(function (c) {
+        return (
+          (!filiere || c.filiere === filiere) &&
+          (!cours || c.intitule === cours)
+        );
+      });
+
+      if (filtered.length === 0) {
+        resultsEl.innerHTML = '<p class="cours-empty">Aucun cours ne correspond a ce filtre.</p>';
+        return;
+      }
+
+      resultsEl.innerHTML = filtered
+        .map(function (c) {
+          var pdfLink = c.hasPdf
+            ? '<a class="btn" style="padding:0.4rem 0.9rem;font-size:0.85rem;" href="' +
+              c.pdfUrl +
+              '" target="_blank" rel="noopener">Voir le support</a>'
+            : '<span class="cours-empty" style="padding:0;">PDF indisponible</span>';
+
+          return (
+            '<div class="cours-result-card">' +
+            '<div>' +
+            '<div class="title">' + c.intitule + '</div>' +
+            '<div class="meta">' +
+            c.filiere + ' &middot; Annee ' + c.annee + ' &middot; Promo ' + c.period +
+            (c.volumeHoraire ? ' &middot; ' + c.volumeHoraire + 'h' : '') +
+            '</div>' +
+            '</div>' +
+            pdfLink +
+            '</div>'
+          );
+        })
+        .join("");
+    }
+
+    filiereSelect.addEventListener("change", render);
+    coursSelect.addEventListener("change", render);
+    render();
+  </script>
+</Layout>

@@ -1,0 +1,62 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { loadPeriods, loadPeriodData } from "../lib/data.mjs";
+
+const base = import.meta.env.BASE_URL;
+
+// Frise chronologique : une carte par periode, la plus recente en premier.
+const periods = loadPeriods().slice().reverse();
+const periodCards = periods.map((p) => {
+  const data = loadPeriodData(p);
+  return {
+    period: p,
+    studentCount: data.students.length,
+    filiereCount: data.filiereGroups.length,
+  };
+});
+---
+
+<Layout title="Accueil" protected={true}>
+  <div class="home-hero">
+    <h1>Archive ALI</h1>
+    <p>
+      Explore les promotions passees de l'African Leadership Higher Institute,
+      ou consulte les cours dispenses par filiere.
+    </p>
+  </div>
+
+  <div class="nav-split">
+    <a class="nav-split-card" href="#frise">
+      <div class="icon">🕰️</div>
+      <h2>Frise chronologique</h2>
+      <p>Parcours les promotions annee par annee : etudiants, filieres et equipe.</p>
+    </a>
+    <a class="nav-split-card" href={`${base}/cours`}>
+      <div class="icon">📚</div>
+      <h2>Section Cours</h2>
+      <p>Retrouve les supports de cours, filtres par filiere ou par intitule.</p>
+    </a>
+  </div>
+
+  <h2 class="section-title" id="frise">Frise chronologique des promotions</h2>
+
+  <div class="timeline">
+    {
+      periodCards.map((card) => (
+        <div class="timeline-item">
+          <a class="timeline-card" href={`${base}/promo/${card.period}`}>
+            <div class="year">{card.period}</div>
+            <div class="meta">
+              {card.studentCount} etudiant(s) &middot; {card.filiereCount} filiere(s)
+            </div>
+          </a>
+        </div>
+      ))
+    }
+    {
+      periodCards.length === 0 && (
+        <p class="cours-empty">Aucune promotion trouvee dans les fixtures.</p>
+      )
+    }
+  </div>
+</Layout>

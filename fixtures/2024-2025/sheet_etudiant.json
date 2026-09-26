@@ -1,0 +1,7 @@
+[
+  {"Nom": "Diallo", "Prenom": "Awa", "Filiere": "Ingenierie", "Description": "Passionnee de robotique et d'IA appliquee.", "ID": "Diallo_Awa"},
+  {"Nom": "Ngoma", "Prenom": "Eric", "Filiere": "Ingenierie", "Description": "Interesse par les systemes embarques.", "ID": "Ngoma_Eric"},
+  {"Nom": "Traore", "Prenom": "Fatou", "Filiere": "Ingenierie", "Description": "Projet de fin d'annee sur la vision par ordinateur.", "ID": "Traore_Fatou"},
+  {"Nom": "Kone", "Prenom": "Issa", "Filiere": "Commerce", "Description": "Specialisation strategie de marque.", "ID": "Kone_Issa"},
+  {"Nom": "Mbeki", "Prenom": "Lila", "Filiere": "Commerce", "Description": "Stage effectue dans une agence de communication.", "ID": "Mbeki_Lila"}
+]

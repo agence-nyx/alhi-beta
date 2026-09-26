@@ -1,0 +1,4 @@
+[
+  {"Nom": "Diallo", "Prenom": "Awa", "Filiere": "Ingenierie", "Description": "Etudiante.", "ID": "Diallo_Awa"},
+  {"Nom": "Diallo", "Prenom": "Awa", "Filiere": "Ingenierie", "Description": "Doublon volontaire pour tester le dry-build.", "ID": "Diallo_Awa"}
+]

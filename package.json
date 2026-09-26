@@ -1,0 +1,23 @@
+{
+  "name": "alhi-beta",
+  "version": "0.1.0",
+  "description": "Archive ALI - version beta (fixtures locales, sans SSO reel)",
+  "type": "module",
+  "scripts": {
+    "dry-build": "node scripts/dry-build.mjs",
+    "dry-build:demo": "node scripts/dry-build.mjs --demo-invalid",
+    "prebuild": "node scripts/dry-build.mjs && node scripts/copy-assets.mjs",
+    "predev": "node scripts/copy-assets.mjs",
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agence-nyx/alhi-beta.git"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "astro": "^4.16.19"
+  }
+}

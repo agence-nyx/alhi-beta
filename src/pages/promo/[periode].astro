@@ -1,0 +1,84 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { loadPeriods, loadPeriodData } from "../../lib/data.mjs";
+
+export function getStaticPaths() {
+  const periods = loadPeriods();
+  return periods.map((period) => ({
+    params: { periode: period },
+  }));
+}
+
+const { periode } = Astro.params;
+const data = loadPeriodData(periode);
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title={`Promotion ${periode}`} protected={true}>
+  <div class="promo-hero">
+    <div class="year">{periode}</div>
+    <p>Archive de la promotion {periode}</p>
+  </div>
+
+  <h2 class="section-title">Etudiants par filiere</h2>
+
+  {
+    data.filiereGroups.map((group) => (
+      <div class="filiere-block">
+        <h3>{group.filiere}</h3>
+        {group.groupPhotoPath && (
+          <div class="filiere-group-photo">
+            <img
+              src={`${base}/data/${encodeURI(group.groupPhotoPath)}`}
+              alt={`Photo de groupe - ${group.filiere}`}
+            />
+          </div>
+        )}
+        <div class="student-grid">
+          {group.students.map((s) => (
+            <div class="student-card">
+              {s.photoPath && (
+                <img src={`${base}/data/${encodeURI(s.photoPath)}`} alt={`${s.Prenom} ${s.Nom}`} />
+              )}
+              <div class="info">
+                <div class="name">
+                  {s.Prenom} {s.Nom}
+                </div>
+                <div class="desc">{s.Description}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))
+  }
+
+  {
+    data.filiereGroups.length === 0 && (
+      <p class="cours-empty">Aucun etudiant enregistre pour cette promotion.</p>
+    )
+  }
+
+  <h2 class="section-title">Equipe de direction / administration</h2>
+
+  <div class="admin-grid">
+    {
+      data.admins.map((a) => (
+        <div class="admin-card">
+          <div class="poste">{a.Poste}</div>
+          <div class="name" style="font-weight:600;">
+            {a.Prenom} {a.Nom}
+          </div>
+          <div class="desc" style="font-size:0.85rem;color:#666;margin-top:0.35rem;">
+            {a.Periode} — {a.Description}
+          </div>
+        </div>
+      ))
+    }
+    {
+      data.admins.length === 0 && (
+        <p class="cours-empty">Aucun membre de l'equipe enregistre pour cette promotion.</p>
+      )
+    }
+  </div>
+</Layout>

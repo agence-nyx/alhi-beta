@@ -1,0 +1,58 @@
+---
+import Layout from "../layouts/Layout.astro";
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title="Portail" protected={false}>
+  <div class="login-screen">
+    <div class="login-card">
+      <img class="logo" src={`${base}/logo.png`} alt="ALI" />
+      <h1>Archive ALI</h1>
+      <p>Portail interne — version beta</p>
+
+      <form id="login-form">
+        <input
+          type="password"
+          id="password"
+          placeholder="Mot de passe"
+          autocomplete="current-password"
+        />
+        <div class="login-error" id="login-error"></div>
+        <button class="btn" type="submit" style="width:100%;">Entrer</button>
+      </form>
+
+      <p class="login-note">
+        Auth factice pour la beta (mot de passe en dur). Sera remplacee par le
+        SSO Google Workspace de l'ecole en production.
+      </p>
+    </div>
+  </div>
+
+  <script define:vars={{ base }} is:inline>
+    // Auth factice — voir src/lib/fake-auth.js pour l'explication complete.
+    // Duplique ici en inline (pas de bundling JS de module externe necessaire
+    // pour une simple verif de mot de passe) pour rester simple a maintenir.
+    var FAKE_PASSWORD = "ali2025beta";
+
+    var form = document.getElementById("login-form");
+    var input = document.getElementById("password");
+    var errorEl = document.getElementById("login-error");
+
+    // Si deja "connecte", on saute direct sur home.
+    if (window.sessionStorage.getItem("ali_archive_auth") === "true") {
+      window.location.href = base + "/home";
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (input.value === FAKE_PASSWORD) {
+        window.sessionStorage.setItem("ali_archive_auth", "true");
+        window.location.href = base + "/home";
+      } else {
+        errorEl.textContent = "Mot de passe incorrect.";
+        input.value = "";
+        input.focus();
+      }
+    });
+  </script>
+</Layout>

@@ -5,7 +5,9 @@
   --color-red-dark: #831a2b;
   --color-border: #e4dfc9;
   --color-card-bg: #ffffff;
-  --font-main: "Poppins", "Segoe UI", system-ui, sans-serif;
+  /* Polices systeme uniquement : aucune dependance reseau externe (evite
+     tout blocage de rendu si Google Fonts est lent/inaccessible). */
+  --font-main: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   --max-width: 1100px;
 }
 

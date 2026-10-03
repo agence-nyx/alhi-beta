@@ -3,10 +3,17 @@ import "../styles/global.css";
 
 interface Props {
   title: string;
-  protected?: boolean; // si true, redirige vers le portail si non "connecte"
+  protected?: boolean;
+  fullBleed?: boolean;
+  navActive?: "frise" | "cours" | null;
 }
 
-const { title, protected: isProtected = false } = Astro.props;
+const {
+  title,
+  protected: isProtected = false,
+  fullBleed = false,
+  navActive = null,
+} = Astro.props;
 const base = import.meta.env.BASE_URL;
 ---
 
@@ -14,7 +21,7 @@ const base = import.meta.env.BASE_URL;
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/png" href={`${base}/logo.png`} />
     <title>{title} — Archive ALI</title>
@@ -33,29 +40,59 @@ const base = import.meta.env.BASE_URL;
       )
     }
 
-    <header class="site-header">
-      <div class="container">
-        <a class="logo-link" href={`${base}/home`}>
-          <img class="logo" src={`${base}/logo.png`} alt="Africa Leadership Higher Institute" />
-          <span class="badge-beta">Beta</span>
-        </a>
-        {
-          isProtected && (
-            <nav>
-              <a href={`${base}/home`}>Accueil</a>
-              <a href={`${base}/cours`}>Cours</a>
-            </nav>
-          )
-        }
-      </div>
-    </header>
+    {
+      isProtected && (
+        <div class="nav">
+          <a href={`${base}/home`} aria-label="Archive ALI - accueil">
+            <img src={`${base}/logo.png`} alt="Africa Leadership Higher Institute" />
+          </a>
+          <nav aria-label="Navigation principale">
+            <a href={`${base}/home#institution`}>L'institution</a>
+            <a href={`${base}/home#archives`}>Les archives</a>
+            <a href={`${base}/frise`} class={navActive === "frise" ? "active" : ""}>Frise</a>
+            <a href={`${base}/cours`} class={navActive === "cours" ? "active" : ""}>Cours</a>
+          </nav>
+          <a class="out" href={`${base}/`} id="logout-link">Quitter</a>
+        </div>
+      )
+    }
 
-    <main class="container">
-      <slot />
-    </main>
+    {
+      fullBleed ? (
+        <main>
+          <slot />
+        </main>
+      ) : (
+        <main class="container">
+          <slot />
+        </main>
+      )
+    }
 
     <footer class="site-footer">
-      Archive ALI — version beta interne, donnees de test uniquement.
+      <div class="container">
+        <div class="footer-top">
+          <div class="footer-brand">Archive de l'African Leadership Institute</div>
+          <div class="footer-links">
+            <a href={`${base}/frise`}>Explorer les Promotions</a>
+            <a href={`${base}/cours`}>Consulter les Cours</a>
+          </div>
+        </div>
+        <div class="footer-fine">© 2026 African Leadership Institute — Tous droits réservés. Projet "Archive".</div>
+      </div>
     </footer>
+
+    {
+      isProtected && (
+        <script is:inline>
+          var logoutLink = document.getElementById("logout-link");
+          if (logoutLink) {
+            logoutLink.addEventListener("click", function () {
+              window.sessionStorage.removeItem("ali_archive_auth");
+            });
+          }
+        </script>
+      )
+    }
   </body>
 </html>

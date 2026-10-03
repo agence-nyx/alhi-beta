@@ -1,62 +1,90 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { loadPeriods, loadPeriodData } from "../lib/data.mjs";
 
 const base = import.meta.env.BASE_URL;
-
-// Frise chronologique : une carte par periode, la plus recente en premier.
-const periods = loadPeriods().slice().reverse();
-const periodCards = periods.map((p) => {
-  const data = loadPeriodData(p);
-  return {
-    period: p,
-    studentCount: data.students.length,
-    filiereCount: data.filiereGroups.length,
-  };
-});
 ---
 
-<Layout title="Accueil" protected={true}>
-  <div class="home-hero">
-    <h1>Archive ALI</h1>
-    <p>
-      Explore les promotions passees de l'African Leadership Higher Institute,
-      ou consulte les cours dispenses par filiere.
-    </p>
-  </div>
+<Layout title="Accueil" protected={true} fullBleed={true}>
+  <header class="hero2" id="accueil">
+    <img class="hero2-art" src={`${base}/brand/hero-statues.webp`} alt="" aria-hidden="true" />
+    <div class="hero2-in">
+      <p class="eyebrow-mono">Mémorial académique</p>
+      <h1>Archive de l'African Leadership Institute</h1>
+      <p class="hero2-sub">La mémoire académique et humaine de nos promotions.</p>
+      <p class="hero2-intro">
+        Bienvenue sur l'espace d'archivage officiel de l'ALI. Cet outil préserve le parcours de nos
+        cohortes, la composition de nos équipes d'encadrement et l'ensemble des enseignements
+        dispensés au sein de l'institut depuis sa création en 2024.
+      </p>
+      <div class="hero2-ctas">
+        <a class="btn-pill btn-pill-primary" href={`${base}/frise`}>Explorer les Promotions →</a>
+        <a class="btn-pill btn-pill-secondary" href={`${base}/cours`}>Consulter les Cours</a>
+      </div>
+    </div>
+  </header>
 
-  <div class="nav-split">
-    <a class="nav-split-card" href="#frise">
-      <div class="icon">🕰️</div>
-      <h2>Frise chronologique</h2>
-      <p>Parcours les promotions annee par annee : etudiants, filieres et equipe.</p>
-    </a>
-    <a class="nav-split-card" href={`${base}/cours`}>
-      <div class="icon">📚</div>
-      <h2>Section Cours</h2>
-      <p>Retrouve les supports de cours, filtres par filiere ou par intitule.</p>
-    </a>
-  </div>
-
-  <h2 class="section-title" id="frise">Frise chronologique des promotions</h2>
-
-  <div class="timeline">
-    {
-      periodCards.map((card) => (
-        <div class="timeline-item">
-          <a class="timeline-card" href={`${base}/promo/${card.period}`}>
-            <div class="year">{card.period}</div>
-            <div class="meta">
-              {card.studentCount} etudiant(s) &middot; {card.filiereCount} filiere(s)
-            </div>
-          </a>
+  <main>
+    <section class="home-section" id="institution">
+      <div class="container home-split">
+        <div>
+          <p class="eyebrow-mono">L'Institution &amp; Sa Vocation</p>
+          <h2>Bâtir l'excellence et le leadership en Afrique</h2>
+          <p>
+            Fondé en 2024, l'African Leadership Institute (ALI) est né d'une ambition claire : doter
+            le continent de leaders intègres, visionnaires et outillés pour relever les défis
+            complexes du XXIe siècle. À travers un modèle pédagogique exigeant qui allie rigueur
+            scientifique, esprit critique et ancrage pratique, l'institut façonne une communauté
+            d'apprenants hautement engagés. Chaque promotion qui franchit nos portes contribue à
+            écrire un chapitre inédit de notre histoire collective, portée par des valeurs
+            d'excellence, d'audace et de responsabilité sociétale.
+          </p>
         </div>
-      ))
-    }
-    {
-      periodCards.length === 0 && (
-        <p class="cours-empty">Aucune promotion trouvee dans les fixtures.</p>
-      )
-    }
-  </div>
+        <img class="ph" src={`${base}/brand/institution.webp`} alt="Statue de marbre observant l'horizon à la longue-vue" />
+      </div>
+    </section>
+
+    <section class="home-section" id="archives">
+      <div class="container home-split">
+        <div>
+          <p class="eyebrow-mono">Patrimoine &amp; Transmission</p>
+          <h2>Un registre pérenne de notre trajectoire</h2>
+          <p>
+            Conçu pour soustraire l'histoire de l'école à l'effervescence du quotidien, cet espace
+            d'archivage constitue la mémoire vivante et sécurisée de l'ALI. Clôturé et mis à jour à
+            la fin de chaque année universitaire, il rassemble et protège les éléments fondateurs de
+            notre identité institutionnelle :
+          </p>
+          <ol class="home-list">
+            <li><span class="n">01</span><div><h3>Les cohortes d'étudiants</h3><p>Le trombinoscope exhaustif de chaque promotion, immortalisant les visages, les parcours individuels par filière et les photographies de groupe historiques.</p></div></li>
+            <li><span class="n">02</span><div><h3>L'administration et la direction</h3><p>La traçabilité des équipes d'encadrement et de gouvernance qui portent la vision de l'institut au fil des ans.</p></div></li>
+            <li><span class="n">03</span><div><h3>Le répertoire pédagogique</h3><p>L'intégralité des supports de cours officiels, documentant précisément l'évolution des programmes, des syllabus et des savoirs dispensés au sein de nos différentes filières.</p></div></li>
+          </ol>
+        </div>
+        <img class="ph" src={`${base}/brand/archives.webp`} alt="Main de marbre tenant un compas au-dessus d'un rouleau" />
+      </div>
+    </section>
+
+    <div class="home-band" aria-hidden="true">
+      <img src={`${base}/brand/band.webp`} alt="" />
+    </div>
+
+    <section class="home-section" id="communaute">
+      <div class="container home-split quote-split">
+        <img class="ph" src={`${base}/brand/communaute.webp`} alt="Sphère armillaire sur un piédestal de marbre" />
+        <div>
+          <p class="eyebrow-mono">Aux Membres de la Communauté</p>
+          <h2>Gardiens et héritiers d'une vision partagée</h2>
+          <p>
+            Que vous soyez un étudiant actuel arpentant les espaces de l'institut, un alumni en
+            quête des souvenirs fondateurs de votre cohorte, ou un membre de l'équipe administrative
+            veillant sur la pérennité de notre mission, cet espace vous est dédié. Les pages que
+            vous vous apprêtez à parcourir témoignent de la somme des efforts, des ambitions et des
+            liens humains indéfectibles qui font battre le cœur de l'ALI. Prenez le temps de mesurer
+            le chemin parcouru : c'est l'histoire vivante de votre propre impact que vous feuilletez
+            ici, gravée pour les générations futures.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
 </Layout>

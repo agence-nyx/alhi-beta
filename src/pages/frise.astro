@@ -22,7 +22,6 @@ const periodsData = periods.map((period) => {
   };
 });
 
-const dataJson = JSON.stringify(periodsData);
 ---
 
 <Layout title="Frise chronologique" protected={true} navActive="frise">
@@ -34,9 +33,8 @@ const dataJson = JSON.stringify(periodsData);
 
   <div class="frise-col" id="frise-col"></div>
 
-  <script type="application/json" id="frise-data">{dataJson}</script>
-  <script define:vars={{ base }} is:inline>
-    var PERIODS = JSON.parse(document.getElementById("frise-data").textContent);
+  <script define:vars={{ base, periodsData }} is:inline>
+    var PERIODS = periodsData;
     var col = document.getElementById("frise-col");
     var rowH = 40;
     var visibleRows = 3;

@@ -47,6 +47,46 @@ const periodsData = periods.map((period) => {
       return e;
     }
 
+    // Ouvre/ferme une branche : au repli, la largeur n'est liberee qu'une
+    // fois l'animation terminee (display:none), sinon la rangee garde sa
+    // place dans le flex et les branches voisines ne reviennent jamais a
+    // leur position d'origine.
+    function toggleRow(row, pill) {
+      var opening = row.classList.contains("collapsed");
+      if (opening) {
+        row.style.display = "flex";
+        void row.offsetWidth;
+        row.classList.remove("collapsed");
+      } else {
+        row.classList.add("collapsed");
+        setTimeout(function () {
+          if (row.classList.contains("collapsed")) row.style.display = "none";
+        }, 420);
+      }
+      pill.classList.toggle("is-open", opening);
+      animateLines(500);
+    }
+
+    // Redessine les traits a chaque frame pendant la duree de la
+    // transition CSS, pour qu'ils suivent l'ouverture/fermeture au lieu
+    // de sauter a un instant fixe qui peut tomber au mauvais moment.
+    var animUntil = 0;
+    var animRunning = false;
+    function animateLines(duration) {
+      animUntil = Math.max(animUntil, performance.now() + duration);
+      if (animRunning) return;
+      animRunning = true;
+      function step(now) {
+        drawLines();
+        if (now < animUntil) {
+          requestAnimationFrame(step);
+        } else {
+          animRunning = false;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
     function buildTree() {
       var root = buildPeriodLevel();
       rootEl.innerHTML = "";
@@ -78,7 +118,6 @@ const periodsData = periods.map((period) => {
       var built = false;
 
       pill.addEventListener("click", function () {
-        var collapsing = !row.classList.contains("collapsed") ? false : null;
         if (!built) {
           row.appendChild(buildCategoryNode("Étudiants", "cat", function (catCol) {
             var r = el("div", "tree-row");
@@ -96,10 +135,7 @@ const periodsData = periods.map((period) => {
           }));
           built = true;
         }
-        row.classList.toggle("collapsed");
-        pill.classList.toggle("is-open");
-        requestAnimationFrame(drawLines);
-        setTimeout(drawLines, 260);
+        toggleRow(row, pill);
       });
 
       col.appendChild(row);
@@ -121,10 +157,7 @@ const periodsData = periods.map((period) => {
           row.appendChild(makeChildrenRow(col));
           built = true;
         }
-        row.classList.toggle("collapsed");
-        pill.classList.toggle("is-open");
-        requestAnimationFrame(drawLines);
-        setTimeout(drawLines, 260);
+        toggleRow(row, pill);
       });
 
       col.appendChild(row);
@@ -148,10 +181,7 @@ const periodsData = periods.map((period) => {
           });
           built = true;
         }
-        row.classList.toggle("collapsed");
-        pill.classList.toggle("is-open");
-        requestAnimationFrame(drawLines);
-        setTimeout(drawLines, 260);
+        toggleRow(row, pill);
       });
 
       col.appendChild(row);

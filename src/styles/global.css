@@ -698,41 +698,55 @@ a { color: inherit; }
 .footer-links a:hover { color: var(--color-red); }
 .footer-fine { padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--color-border); font-size: 0.8rem; color: var(--color-soft); }
 
-/* --- Frise : picker a defilement + trait qui se trace + cartes ----------- */
+/* --- Frise : arbre cliquable avec branches courbes ------------------------ */
 
 .frise-page-head { padding: calc(env(safe-area-inset-top, 0px) + 8rem) 0 2.5rem; text-align: center; }
 .frise-page-head h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin-bottom: 0.9rem; }
 .frise-page-head p { max-width: 34rem; margin: 0 auto; color: var(--color-soft); }
 
-.frise-col { display: flex; flex-direction: column; align-items: center; padding: 1.5rem 0 5rem; min-height: 360px; }
+.tree-wrap { position: relative; padding: 1rem 2rem 6rem; overflow-x: auto; }
+.tree-lines { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
+.tree-line { fill: none; stroke: var(--color-border); stroke-width: 1.3px; }
 
-.frise-picker-frame { position: relative; width: 240px; overflow: hidden; margin: 4px 0; }
-.frise-picker-focus {
-  position: absolute; left: 0; right: 0;
-  border-top: 0.5px solid var(--color-border); border-bottom: 0.5px solid var(--color-border);
-  transition: background 0.25s ease;
+.tree-root { position: relative; display: flex; justify-content: center; min-width: max-content; margin: 0 auto; }
+.tree-col { display: flex; flex-direction: column; align-items: center; }
+.tree-row {
+  display: flex; flex-direction: row; align-items: flex-start; justify-content: center;
+  gap: 2.5rem; margin-top: 2.75rem;
+  max-height: 2000px; opacity: 1; overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(.22,.8,.25,1), opacity 0.3s ease, margin-top 0.4s cubic-bezier(.22,.8,.25,1);
 }
-.frise-picker-inner { position: absolute; left: 0; right: 0; transition: transform 0.5s cubic-bezier(.22,.8,.25,1); }
-.frise-picker-row {
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-serif); font-size: 1.3rem; color: var(--color-soft);
-  transition: color 0.25s ease; cursor: pointer;
+.tree-row.collapsed { max-height: 0; opacity: 0; margin-top: 0; }
+
+.tree-pill {
+  position: relative; z-index: 2;
+  font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.04em;
+  padding: 0.65rem 1.3rem; border-radius: 999px; white-space: nowrap;
+  cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s;
+  background: var(--color-card-bg); border: 1px solid var(--color-border); color: var(--color-text);
 }
-.frise-picker-row.is-center { color: var(--color-text); }
-.frise-picker-row.is-selected { color: var(--color-red); font-weight: 500; }
+.tree-pill:hover { border-color: var(--color-red); }
+.tree-pill.is-open { background: var(--color-red); color: #fff; border-color: var(--color-red); }
+.tree-pill-root { font-family: var(--font-serif); font-size: 1.1rem; padding: 0.8rem 1.8rem; cursor: default; }
+.tree-pill-root:hover { border-color: var(--color-border); }
+.tree-pill-period { font-weight: 500; }
 
-.frise-resolved { font-family: var(--font-serif); font-size: 1.3rem; color: var(--color-red); font-weight: 500; min-height: 1.5rem; }
-.frise-connector { width: 1px; border-left: 1px dashed var(--color-border); transition: height 0.45s cubic-bezier(.22,.8,.25,1); }
-
-.frise-cards { display: flex; gap: 1.1rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem; }
-.frise-profile-card {
+.tree-person {
+  position: relative; z-index: 2;
   background: var(--color-card-bg); border: 1px solid var(--color-border); border-top: 2px solid var(--color-red);
-  border-radius: 12px; padding: 1.1rem; width: 160px; text-align: center;
-  opacity: 0; transform: translateY(-8px) scale(0.96);
-  transition: opacity 0.4s cubic-bezier(.22,.8,.25,1), transform 0.4s cubic-bezier(.22,.8,.25,1);
+  border-radius: 12px; padding: 0.9rem 1rem; width: 136px; text-align: center;
 }
-.frise-profile-card.in { opacity: 1; transform: none; }
-.frise-profile-card img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; margin: 0 auto 0.75rem; display: block; background: var(--color-border); }
-.frise-profile-card .name { font-weight: 600; font-size: 0.92rem; }
-.frise-profile-card .sub { font-size: 0.78rem; color: var(--color-soft); margin-top: 0.2rem; }
-.frise-empty { color: var(--color-soft); font-style: italic; text-align: center; padding: 2rem 0; }
+.tree-person img, .tree-person-avatar {
+  width: 52px; height: 52px; border-radius: 50%; object-fit: cover; margin: 0 auto 0.5rem; display: block;
+}
+.tree-person-avatar {
+  background: var(--color-bg); border: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-red);
+}
+.tree-person-name { font-weight: 600; font-size: 0.82rem; }
+.tree-person-sub { font-size: 0.72rem; color: var(--color-soft); margin-top: 0.15rem; }
+
+@media (max-width: 720px) {
+  .tree-root { flex-direction: column; }
+}

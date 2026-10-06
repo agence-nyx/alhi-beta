@@ -4,7 +4,7 @@ import { loadPeriods, loadPeriodData } from "../lib/data.mjs";
 
 const base = import.meta.env.BASE_URL;
 
-const periods = loadPeriods().slice().reverse(); // plus recent en premier
+const periods = loadPeriods().slice().reverse();
 const periodsData = periods.map((period) => {
   const data = loadPeriodData(period);
   return {
@@ -21,176 +21,198 @@ const periodsData = periods.map((period) => {
     })),
   };
 });
-
 ---
 
 <Layout title="Frise chronologique" protected={true} navActive="frise">
   <div class="frise-page-head">
     <p class="eyebrow-mono">Mémorial académique</p>
     <h1>Frise chronologique des promotions</h1>
-    <p>Choisis une année, puis étudiants ou direction, pour découvrir la promotion correspondante.</p>
+    <p>Clique sur une branche pour l'ouvrir : année, puis étudiants ou direction, puis filière et personnes.</p>
   </div>
 
-  <div class="frise-col" id="frise-col"></div>
+  <div class="tree-wrap" id="tree-wrap">
+    <svg id="tree-lines" class="tree-lines"></svg>
+    <div class="tree-root" id="tree-root"></div>
+  </div>
 
-  <script define:vars={{ base, periodsData }} is:inline>
-    var PERIODS = periodsData;
-    var col = document.getElementById("frise-col");
-    var rowH = 40;
-    var visibleRows = 3;
+  <script define:vars={{ periodsData }} is:inline>
+    var DATA = periodsData;
+    var wrap = document.getElementById("tree-wrap");
+    var svg = document.getElementById("tree-lines");
+    var rootEl = document.getElementById("tree-root");
 
-    function el(tag, cls, text) {
+    function el(tag, cls) {
       var e = document.createElement(tag);
       if (cls) e.className = cls;
-      if (text !== undefined) e.textContent = text;
       return e;
     }
 
-    function waitFrame() {
-      return new Promise(function (r) { requestAnimationFrame(r); });
+    function buildTree() {
+      var root = buildPeriodLevel();
+      rootEl.innerHTML = "";
+      rootEl.appendChild(root);
+      drawLines();
     }
-    function sleep(ms) {
-      return new Promise(function (r) { setTimeout(r, ms); });
+
+    function buildPeriodLevel() {
+      var col = el("div", "tree-col");
+      var pill = el("div", "tree-pill tree-pill-root");
+      pill.textContent = "Archive ALI";
+      col.appendChild(pill);
+
+      var row = el("div", "tree-row");
+      DATA.forEach(function (periodData) {
+        row.appendChild(buildPeriodNode(periodData));
+      });
+      col.appendChild(row);
+      return col;
     }
 
-    // Affiche un picker a defilement pour `options` (tableau de libelles).
-    // Resout avec l'index choisi quand l'utilisateur clique ou valide au clavier.
-    function runPicker(options) {
-      return new Promise(function (resolve) {
-        var frame = el("div", "frise-picker-frame");
-        frame.style.height = rowH * visibleRows + "px";
-        var focus = el("div", "frise-picker-focus");
-        focus.style.top = rowH + "px";
-        focus.style.height = rowH + "px";
-        var inner = el("div", "frise-picker-inner");
-        inner.style.transform = "translateY(" + rowH + "px)";
+    function buildPeriodNode(periodData) {
+      var col = el("div", "tree-col");
+      var pill = el("div", "tree-pill tree-pill-period");
+      pill.textContent = periodData.period;
+      col.appendChild(pill);
 
-        options.forEach(function (label, idx) {
-          var row = el("div", "frise-picker-row is-center", label);
-          row.style.height = rowH + "px";
-          row.tabIndex = 0;
-          row.setAttribute("role", "option");
-          row.addEventListener("click", function () { choose(idx); });
-          row.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(idx); }
-          });
-          inner.appendChild(row);
-        });
+      var row = el("div", "tree-row collapsed");
+      var built = false;
 
-        frame.appendChild(inner);
-        frame.appendChild(focus);
-        col.appendChild(frame);
-
-        var chosen = false;
-        function choose(idx) {
-          if (chosen) return;
-          chosen = true;
-          var target = inner.children[idx];
-          focus.style.background = "var(--color-bg)";
-          target.classList.add("is-selected");
-          resolve({ index: idx, value: options[idx], frame: frame, target: target });
+      pill.addEventListener("click", function () {
+        var collapsing = !row.classList.contains("collapsed") ? false : null;
+        if (!built) {
+          row.appendChild(buildCategoryNode("Étudiants", "cat", function (catCol) {
+            var r = el("div", "tree-row");
+            periodData.filiereGroups.forEach(function (g) {
+              r.appendChild(buildFiliereNode(g));
+            });
+            return r;
+          }));
+          row.appendChild(buildCategoryNode("Direction", "cat", function (catCol) {
+            var r = el("div", "tree-row");
+            periodData.admins.forEach(function (a) {
+              r.appendChild(buildPersonCard(a.Prenom + " " + a.Nom, a.Poste));
+            });
+            return r;
+          }));
+          built = true;
         }
+        row.classList.toggle("collapsed");
+        pill.classList.toggle("is-open");
+        requestAnimationFrame(drawLines);
+        setTimeout(drawLines, 260);
       });
+
+      col.appendChild(row);
+      return col;
     }
 
-    // Anime la montee du texte choisi vers le fil, puis trace le connecteur.
-    async function resolveIntoTrail(picked) {
-      await sleep(250);
-      var oldRect = picked.target.getBoundingClientRect();
-      picked.frame.remove();
+    function buildCategoryNode(label, kind, makeChildrenRow) {
+      var col = el("div", "tree-col");
+      var pill = el("div", "tree-pill tree-pill-cat");
+      pill.textContent = label;
+      col.appendChild(pill);
 
-      var line = el("div", "frise-resolved", picked.value);
-      col.appendChild(line);
-      var newRect = line.getBoundingClientRect();
-      var dx = oldRect.left - newRect.left;
-      var dy = oldRect.top - newRect.top;
-      line.style.transform = "translate(" + dx + "px," + dy + "px) scale(1.15)";
-      line.style.transition = "none";
-      void line.offsetWidth;
-      line.style.transition = "transform .5s cubic-bezier(.22,.8,.25,1)";
-      await waitFrame();
-      line.style.transform = "none";
-      await sleep(550);
+      var row = el("div", "tree-row collapsed");
+      var built = false;
 
-      var connector = el("div", "frise-connector");
-      connector.style.height = "0px";
-      col.appendChild(connector);
-      await sleep(30);
-      connector.style.height = "20px";
-      await sleep(480);
-    }
-
-    function studentCard(s) {
-      var card = el("div", "frise-profile-card");
-      var img = document.createElement("img");
-      img.src = s.photoUrl || "";
-      img.alt = s.Prenom + " " + s.Nom;
-      card.appendChild(img);
-      card.appendChild(el("div", "name", s.Prenom + " " + s.Nom));
-      card.appendChild(el("div", "sub", s.Description || ""));
-      return card;
-    }
-
-    function adminCard(a) {
-      var card = el("div", "frise-profile-card");
-      var initials = el("div", "name", a.Prenom + " " + a.Nom);
-      card.appendChild(initials);
-      card.appendChild(el("div", "sub", a.Poste));
-      return card;
-    }
-
-    async function showCards(items, renderFn, emptyLabel) {
-      if (items.length === 0) {
-        col.appendChild(el("p", "frise-empty", emptyLabel));
-        return;
-      }
-      var fan = el("div", "frise-cards");
-      col.appendChild(fan);
-      for (var i = 0; i < items.length; i++) {
-        var c = renderFn(items[i]);
-        fan.appendChild(c);
-        await sleep(90);
-        (function (node) {
-          requestAnimationFrame(function () { node.classList.add("in"); });
-        })(c);
-      }
-    }
-
-    function addRestart() {
-      var again = el("a", "btn-pill btn-pill-secondary", "Recommencer");
-      again.href = "#";
-      again.style.marginTop = "2rem";
-      again.addEventListener("click", function (e) {
-        e.preventDefault();
-        run();
+      pill.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (!built) {
+          row.appendChild(makeChildrenRow(col));
+          built = true;
+        }
+        row.classList.toggle("collapsed");
+        pill.classList.toggle("is-open");
+        requestAnimationFrame(drawLines);
+        setTimeout(drawLines, 260);
       });
-      col.appendChild(again);
+
+      col.appendChild(row);
+      return col;
     }
 
-    async function run() {
-      col.innerHTML = "";
+    function buildFiliereNode(group) {
+      var col = el("div", "tree-col");
+      var pill = el("div", "tree-pill tree-pill-filiere");
+      pill.textContent = group.filiere;
+      col.appendChild(pill);
 
-      var yearOptions = PERIODS.map(function (p) { return p.period; });
-      var yearPick = await runPicker(yearOptions);
-      await resolveIntoTrail(yearPick);
-      var periodData = PERIODS[yearPick.index];
+      var row = el("div", "tree-row collapsed");
+      var built = false;
 
-      var typePick = await runPicker(["Étudiants", "Direction"]);
-      await resolveIntoTrail(typePick);
+      pill.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (!built) {
+          group.students.forEach(function (s) {
+            row.appendChild(buildPersonCard(s.Prenom + " " + s.Nom, s.Description, s.photoUrl));
+          });
+          built = true;
+        }
+        row.classList.toggle("collapsed");
+        pill.classList.toggle("is-open");
+        requestAnimationFrame(drawLines);
+        setTimeout(drawLines, 260);
+      });
 
-      if (typePick.index === 0) {
-        var filiereOptions = periodData.filiereGroups.map(function (g) { return g.filiere; });
-        var filierePick = await runPicker(filiereOptions);
-        await resolveIntoTrail(filierePick);
-        var group = periodData.filiereGroups[filierePick.index];
-        await showCards(group.students, studentCard, "Aucun étudiant enregistré pour cette filière.");
+      col.appendChild(row);
+      return col;
+    }
+
+    function buildPersonCard(name, sub, photoUrl) {
+      var card = el("div", "tree-person");
+      if (photoUrl) {
+        var img = document.createElement("img");
+        img.src = photoUrl;
+        img.alt = name;
+        card.appendChild(img);
       } else {
-        await showCards(periodData.admins, adminCard, "Aucun membre de l'équipe enregistré pour cette promotion.");
+        var initials = el("div", "tree-person-avatar");
+        initials.textContent = name.split(" ").map(function (p) { return p[0]; }).join("").slice(0, 2);
+        card.appendChild(initials);
       }
-
-      addRestart();
+      var nameEl = el("div", "tree-person-name");
+      nameEl.textContent = name;
+      var subEl = el("div", "tree-person-sub");
+      subEl.textContent = sub || "";
+      card.appendChild(nameEl);
+      card.appendChild(subEl);
+      return card;
     }
 
-    run();
+    function drawLines() {
+      var wrapRect = wrap.getBoundingClientRect();
+      svg.setAttribute("width", wrapRect.width);
+      svg.setAttribute("height", wrapRect.height);
+      svg.innerHTML = "";
+
+      document.querySelectorAll(".tree-col").forEach(function (col) {
+        var pill = col.querySelector(":scope > .tree-pill, :scope > .tree-person");
+        var row = col.querySelector(":scope > .tree-row");
+        if (!pill || !row || row.classList.contains("collapsed")) return;
+
+        var pRect = pill.getBoundingClientRect();
+        var startX = pRect.left + pRect.width / 2 - wrapRect.left;
+        var startY = pRect.bottom - wrapRect.top;
+
+        Array.prototype.forEach.call(row.children, function (childCol) {
+          var childPill = childCol.querySelector(":scope > .tree-pill, :scope > .tree-person") || childCol;
+          var cRect = childPill.getBoundingClientRect();
+          var endX = cRect.left + cRect.width / 2 - wrapRect.left;
+          var endY = cRect.top - wrapRect.top;
+          var midY = (startY + endY) / 2;
+
+          var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute(
+            "d",
+            "M" + startX + "," + startY + " C " + startX + "," + midY + " " + endX + "," + midY + " " + endX + "," + endY
+          );
+          path.setAttribute("class", "tree-line");
+          svg.appendChild(path);
+        });
+      });
+    }
+
+    buildTree();
+    window.addEventListener("resize", drawLines);
   </script>
 </Layout>

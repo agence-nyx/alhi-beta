@@ -47,148 +47,46 @@ const periodsData = periods.map((period) => {
       return e;
     }
 
-    // Ouvre/ferme une branche : au repli, la largeur n'est liberee qu'une
-    // fois l'animation terminee (display:none), sinon la rangee garde sa
-    // place dans le flex et les branches voisines ne reviennent jamais a
-    // leur position d'origine.
-    function toggleRow(row, pill) {
-      var opening = row.classList.contains("collapsed");
-      if (opening) {
-        row.style.display = "flex";
-        void row.offsetWidth;
-        row.classList.remove("collapsed");
-      } else {
-        row.classList.add("collapsed");
-        setTimeout(function () {
-          if (row.classList.contains("collapsed")) row.style.display = "none";
-        }, 420);
-      }
-      pill.classList.toggle("is-open", opening);
-      animateLines(500);
+    // ---- Modele de l'arbre -------------------------------------------
+    // Chaque noeud est un objet { el, pill, row, kids, open } :
+    //   el   : l'element a inserer dans le DOM (colonne pill + rangee)
+    //   pill : l'element dont on mesure la position pour tracer les traits
+    //   row  : la rangee qui contient les enfants (null pour une personne)
+    //   kids : la liste EXPLICITE des noeuds enfants
+    // Les traits sont tires de cette liste, jamais deduits de la forme du
+    // DOM : une rangee de plus ou de moins dans le HTML ne peut plus
+    // casser les liens (c'etait la cause du bug "un seul trait pour deux
+    // filieres", un div.tree-row s'etait glisse entre parent et enfants).
+
+    function addKid(node, kid) {
+      node.row.appendChild(kid.el);
+      node.kids.push(kid);
     }
 
-    // Redessine les traits a chaque frame pendant la duree de la
-    // transition CSS, pour qu'ils suivent l'ouverture/fermeture au lieu
-    // de sauter a un instant fixe qui peut tomber au mauvais moment.
-    var animUntil = 0;
-    var animRunning = false;
-    function animateLines(duration) {
-      animUntil = Math.max(animUntil, performance.now() + duration);
-      if (animRunning) return;
-      animRunning = true;
-      function step(now) {
-        drawLines();
-        if (now < animUntil) {
-          requestAnimationFrame(step);
-        } else {
-          animRunning = false;
-        }
-      }
-      requestAnimationFrame(step);
-    }
-
-    function buildTree() {
-      var root = buildPeriodLevel();
-      rootEl.innerHTML = "";
-      rootEl.appendChild(root);
-      drawLines();
-    }
-
-    function buildPeriodLevel() {
+    // Branche generique : une pill cliquable + une rangee d'enfants
+    // construite paresseusement au premier clic par fill(node).
+    function buildBranch(pillClass, label, fill) {
       var col = el("div", "tree-col");
-      var pill = el("div", "tree-pill tree-pill-root");
-      pill.textContent = "Archive ALI";
-      col.appendChild(pill);
-
-      var row = el("div", "tree-row");
-      DATA.forEach(function (periodData) {
-        row.appendChild(buildPeriodNode(periodData));
-      });
-      col.appendChild(row);
-      return col;
-    }
-
-    function buildPeriodNode(periodData) {
-      var col = el("div", "tree-col");
-      var pill = el("div", "tree-pill tree-pill-period");
-      pill.textContent = periodData.period;
-      col.appendChild(pill);
-
-      var row = el("div", "tree-row collapsed");
-      var built = false;
-
-      pill.addEventListener("click", function () {
-        if (!built) {
-          row.appendChild(buildCategoryNode("Étudiants", "cat", function (catCol) {
-            var r = el("div", "tree-row");
-            periodData.filiereGroups.forEach(function (g) {
-              r.appendChild(buildFiliereNode(g));
-            });
-            return r;
-          }));
-          row.appendChild(buildCategoryNode("Direction", "cat", function (catCol) {
-            var r = el("div", "tree-row");
-            periodData.admins.forEach(function (a) {
-              r.appendChild(buildPersonCard(a.Prenom + " " + a.Nom, a.Poste));
-            });
-            return r;
-          }));
-          built = true;
-        }
-        toggleRow(row, pill);
-      });
-
-      col.appendChild(row);
-      return col;
-    }
-
-    function buildCategoryNode(label, kind, makeChildrenRow) {
-      var col = el("div", "tree-col");
-      var pill = el("div", "tree-pill tree-pill-cat");
+      var pill = el("div", "tree-pill " + pillClass);
       pill.textContent = label;
-      col.appendChild(pill);
-
       var row = el("div", "tree-row collapsed");
-      var built = false;
+      col.appendChild(pill);
+      col.appendChild(row);
 
+      var node = { el: col, pill: pill, row: row, kids: [], open: false };
+      var built = false;
       pill.addEventListener("click", function (e) {
         e.stopPropagation();
         if (!built) {
-          row.appendChild(makeChildrenRow(col));
+          fill(node);
           built = true;
         }
-        toggleRow(row, pill);
+        toggleBranch(node);
       });
-
-      col.appendChild(row);
-      return col;
+      return node;
     }
 
-    function buildFiliereNode(group) {
-      var col = el("div", "tree-col");
-      var pill = el("div", "tree-pill tree-pill-filiere");
-      pill.textContent = group.filiere;
-      col.appendChild(pill);
-
-      var row = el("div", "tree-row collapsed");
-      var built = false;
-
-      pill.addEventListener("click", function (e) {
-        e.stopPropagation();
-        if (!built) {
-          group.students.forEach(function (s) {
-            row.appendChild(buildPersonCard(s.Prenom + " " + s.Nom, s.Description, s.photoUrl));
-          });
-          built = true;
-        }
-        toggleRow(row, pill);
-      });
-
-      col.appendChild(row);
-      return col;
-    }
-
-    function buildPersonCard(name, sub, photoUrl) {
+    function buildPersonNode(name, sub, photoUrl) {
       var card = el("div", "tree-person");
       if (photoUrl) {
         var img = document.createElement("img");
@@ -206,56 +104,117 @@ const periodsData = periods.map((period) => {
       subEl.textContent = sub || "";
       card.appendChild(nameEl);
       card.appendChild(subEl);
-      return card;
+      return { el: card, pill: card, row: null, kids: [], open: false };
     }
 
-    // Un noeud est invisible si lui ou un de ses ancetres est replie
-    // (classe "collapsed", ou display:none une fois l'animation finie).
-    // Dans ce cas getBoundingClientRect() renvoie des zeros : si on
-    // traçait quand meme, le trait partirait du coin haut-gauche de la
-    // fenetre vers le noeud visible (bug "trait qui traverse l'ecran").
-    function isHidden(node) {
-      if (node.getClientRects().length === 0) return true;
-      var p = node.parentElement;
-      while (p && p !== wrap) {
-        if (p.classList.contains("tree-row") && p.classList.contains("collapsed")) return true;
-        p = p.parentElement;
+    function buildFiliereNode(group) {
+      return buildBranch("tree-pill-filiere", group.filiere, function (node) {
+        group.students.forEach(function (s) {
+          addKid(node, buildPersonNode(s.Prenom + " " + s.Nom, s.Description, s.photoUrl));
+        });
+      });
+    }
+
+    function buildPeriodNode(periodData) {
+      return buildBranch("tree-pill-period", periodData.period, function (node) {
+        addKid(node, buildBranch("tree-pill-cat", "Étudiants", function (cat) {
+          periodData.filiereGroups.forEach(function (g) {
+            addKid(cat, buildFiliereNode(g));
+          });
+        }));
+        addKid(node, buildBranch("tree-pill-cat", "Direction", function (cat) {
+          periodData.admins.forEach(function (a) {
+            addKid(cat, buildPersonNode(a.Prenom + " " + a.Nom, a.Poste));
+          });
+        }));
+      });
+    }
+
+    // Racine : toujours ouverte, ses enfants sont les annees.
+    var rootNode = (function () {
+      var col = el("div", "tree-col");
+      var pill = el("div", "tree-pill tree-pill-root");
+      pill.textContent = "Archive ALI";
+      var row = el("div", "tree-row");
+      col.appendChild(pill);
+      col.appendChild(row);
+      var node = { el: col, pill: pill, row: row, kids: [], open: true };
+      DATA.forEach(function (periodData) {
+        addKid(node, buildPeriodNode(periodData));
+      });
+      return node;
+    })();
+
+    // Ouvre/ferme une branche. Au repli, la rangee n'est retiree du flux
+    // (display:none) qu'une fois l'animation finie, sinon elle garde sa
+    // place et les branches voisines ne reviennent pas a leur position.
+    function toggleBranch(node) {
+      var row = node.row;
+      var opening = !node.open;
+      node.open = opening;
+      if (opening) {
+        row.style.display = "flex";
+        void row.offsetWidth;
+        row.classList.remove("collapsed");
+      } else {
+        row.classList.add("collapsed");
+        setTimeout(function () {
+          if (row.classList.contains("collapsed")) row.style.display = "none";
+        }, 420);
       }
-      return false;
+      node.pill.classList.toggle("is-open", opening);
+      animateLines(500);
+    }
+
+    // Redessine les traits a chaque frame pendant la transition CSS pour
+    // qu'ils suivent l'ouverture/fermeture.
+    var animUntil = 0;
+    var animRunning = false;
+    function animateLines(duration) {
+      animUntil = Math.max(animUntil, performance.now() + duration);
+      if (animRunning) return;
+      animRunning = true;
+      function step(now) {
+        drawLines();
+        if (now < animUntil) {
+          requestAnimationFrame(step);
+        } else {
+          animRunning = false;
+          drawLines(); // trace final une fois la mise en page stabilisee
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Un element sans rectangle est dans un display:none : le mesurer
+    // renverrait des zeros et le trait partirait du coin de la fenetre.
+    function isHidden(node) {
+      return node.getClientRects().length === 0;
     }
 
     function drawLines() {
       var wrapRect = wrap.getBoundingClientRect();
-      // .tree-wrap defile horizontalement (overflow-x:auto) et le SVG est
-      // positionne en absolu DANS ce conteneur : il defile avec le contenu.
-      // Les coordonnees doivent donc etre relatives au contenu, pas a la
-      // fenetre, d'ou l'ajout de scrollLeft/scrollTop. Sans ca, des qu'on
-      // ouvre assez d'annees pour que l'arbre depasse l'ecran, tous les
-      // traits sont decales.
+      // Le SVG est en absolu DANS .tree-wrap (overflow-x:auto) : il defile
+      // avec le contenu. Les coordonnees doivent donc etre relatives au
+      // contenu, d'ou scrollLeft/scrollTop.
       var offX = wrap.scrollLeft - wrapRect.left;
       var offY = wrap.scrollTop - wrapRect.top;
       svg.setAttribute("width", wrap.scrollWidth);
       svg.setAttribute("height", wrap.scrollHeight);
       svg.innerHTML = "";
 
-      document.querySelectorAll(".tree-col").forEach(function (col) {
-        var pill = col.querySelector(":scope > .tree-pill, :scope > .tree-person");
-        var row = col.querySelector(":scope > .tree-row");
-        if (!pill || !row || row.classList.contains("collapsed")) return;
-        if (isHidden(pill) || isHidden(row)) return;
-
-        var pRect = pill.getBoundingClientRect();
+      function draw(node) {
+        if (!node.open || isHidden(node.pill)) return;
+        var pRect = node.pill.getBoundingClientRect();
         var startX = pRect.left + pRect.width / 2 + offX;
         var startY = pRect.bottom + offY;
 
-        Array.prototype.forEach.call(row.children, function (childCol) {
-          var childPill = childCol.querySelector(":scope > .tree-pill, :scope > .tree-person") || childCol;
-          if (isHidden(childPill)) return;
-          var cRect = childPill.getBoundingClientRect();
+        node.kids.forEach(function (kid) {
+          if (isHidden(kid.pill)) return;
+          var cRect = kid.pill.getBoundingClientRect();
           var endX = cRect.left + cRect.width / 2 + offX;
           var endY = cRect.top + offY;
           var midY = (startY + endY) / 2;
-
           var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
           path.setAttribute(
             "d",
@@ -263,14 +222,17 @@ const periodsData = periods.map((period) => {
           );
           path.setAttribute("class", "tree-line");
           svg.appendChild(path);
+          draw(kid);
         });
-      });
+      }
+      draw(rootNode);
     }
 
-    buildTree();
+    rootEl.appendChild(rootNode.el);
+    drawLines();
     window.addEventListener("resize", drawLines);
-    // Les photos d'etudiants se chargent apres l'ouverture d'une branche et
-    // changent la hauteur des cartes : on retrace quand la taille change.
+    // Les photos se chargent apres l'ouverture d'une branche et changent la
+    // hauteur des cartes : on retrace quand la taille du contenu change.
     if (window.ResizeObserver) {
       new ResizeObserver(function () { drawLines(); }).observe(rootEl);
     }

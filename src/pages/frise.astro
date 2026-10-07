@@ -209,26 +209,51 @@ const periodsData = periods.map((period) => {
       return card;
     }
 
+    // Un noeud est invisible si lui ou un de ses ancetres est replie
+    // (classe "collapsed", ou display:none une fois l'animation finie).
+    // Dans ce cas getBoundingClientRect() renvoie des zeros : si on
+    // traçait quand meme, le trait partirait du coin haut-gauche de la
+    // fenetre vers le noeud visible (bug "trait qui traverse l'ecran").
+    function isHidden(node) {
+      if (node.getClientRects().length === 0) return true;
+      var p = node.parentElement;
+      while (p && p !== wrap) {
+        if (p.classList.contains("tree-row") && p.classList.contains("collapsed")) return true;
+        p = p.parentElement;
+      }
+      return false;
+    }
+
     function drawLines() {
       var wrapRect = wrap.getBoundingClientRect();
-      svg.setAttribute("width", wrapRect.width);
-      svg.setAttribute("height", wrapRect.height);
+      // .tree-wrap defile horizontalement (overflow-x:auto) et le SVG est
+      // positionne en absolu DANS ce conteneur : il defile avec le contenu.
+      // Les coordonnees doivent donc etre relatives au contenu, pas a la
+      // fenetre, d'ou l'ajout de scrollLeft/scrollTop. Sans ca, des qu'on
+      // ouvre assez d'annees pour que l'arbre depasse l'ecran, tous les
+      // traits sont decales.
+      var offX = wrap.scrollLeft - wrapRect.left;
+      var offY = wrap.scrollTop - wrapRect.top;
+      svg.setAttribute("width", wrap.scrollWidth);
+      svg.setAttribute("height", wrap.scrollHeight);
       svg.innerHTML = "";
 
       document.querySelectorAll(".tree-col").forEach(function (col) {
         var pill = col.querySelector(":scope > .tree-pill, :scope > .tree-person");
         var row = col.querySelector(":scope > .tree-row");
         if (!pill || !row || row.classList.contains("collapsed")) return;
+        if (isHidden(pill) || isHidden(row)) return;
 
         var pRect = pill.getBoundingClientRect();
-        var startX = pRect.left + pRect.width / 2 - wrapRect.left;
-        var startY = pRect.bottom - wrapRect.top;
+        var startX = pRect.left + pRect.width / 2 + offX;
+        var startY = pRect.bottom + offY;
 
         Array.prototype.forEach.call(row.children, function (childCol) {
           var childPill = childCol.querySelector(":scope > .tree-pill, :scope > .tree-person") || childCol;
+          if (isHidden(childPill)) return;
           var cRect = childPill.getBoundingClientRect();
-          var endX = cRect.left + cRect.width / 2 - wrapRect.left;
-          var endY = cRect.top - wrapRect.top;
+          var endX = cRect.left + cRect.width / 2 + offX;
+          var endY = cRect.top + offY;
           var midY = (startY + endY) / 2;
 
           var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -244,5 +269,11 @@ const periodsData = periods.map((period) => {
 
     buildTree();
     window.addEventListener("resize", drawLines);
+    // Les photos d'etudiants se chargent apres l'ouverture d'une branche et
+    // changent la hauteur des cartes : on retrace quand la taille change.
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { drawLines(); }).observe(rootEl);
+    }
+    rootEl.addEventListener("load", function () { drawLines(); }, true);
   </script>
 </Layout>

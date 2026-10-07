@@ -23,7 +23,7 @@ const periodsData = periods.map((period) => {
 });
 ---
 
-<Layout title="Frise chronologique" protected={true} navActive="frise">
+<Layout title="Frise chronologique" protected={true} navActive="frise" fullBleed={true}>
   <div class="frise-page-head">
     <p class="eyebrow-mono">Mémorial académique</p>
     <h1>Frise chronologique des promotions</h1>
@@ -227,6 +227,38 @@ const periodsData = periods.map((period) => {
       }
       draw(rootNode);
     }
+
+    // Defilement horizontal a la souris (glisser-deposer), puisque la
+    // barre de defilement est masquee. Le trackpad, Maj+molette et le doigt
+    // continuent de marcher nativement. Un glisser de plus de 5px ne doit
+    // pas declencher l'ouverture/fermeture d'une branche au relachement.
+    var drag = null;
+    var dragMoved = false;
+    wrap.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      drag = { x: e.clientX, left: wrap.scrollLeft };
+      dragMoved = false;
+    });
+    window.addEventListener("pointermove", function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.x;
+      if (!dragMoved && Math.abs(dx) > 5) {
+        dragMoved = true;
+        wrap.classList.add("is-dragging");
+      }
+      if (dragMoved) wrap.scrollLeft = drag.left - dx;
+    });
+    window.addEventListener("pointerup", function () {
+      drag = null;
+      wrap.classList.remove("is-dragging");
+    });
+    wrap.addEventListener("click", function (e) {
+      if (dragMoved) {
+        e.stopPropagation();
+        e.preventDefault();
+        dragMoved = false;
+      }
+    }, true);
 
     rootEl.appendChild(rootNode.el);
     drawLines();

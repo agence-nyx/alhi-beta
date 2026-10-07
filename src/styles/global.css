@@ -700,11 +700,19 @@ a { color: inherit; }
 
 /* --- Frise : arbre cliquable avec branches courbes ------------------------ */
 
-.frise-page-head { padding: calc(env(safe-area-inset-top, 0px) + 8rem) 0 2.5rem; text-align: center; }
+.frise-page-head { padding: calc(env(safe-area-inset-top, 0px) + 8rem) 1.5rem 2.5rem; text-align: center; }
 .frise-page-head h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin-bottom: 0.9rem; }
 .frise-page-head p { max-width: 34rem; margin: 0 auto; color: var(--color-soft); }
 
-.tree-wrap { position: relative; padding: 1rem 2rem 6rem; overflow-x: auto; }
+.tree-wrap {
+  position: relative; padding: 1rem 2rem 6rem; overflow-x: auto;
+  /* Barres de defilement masquees (le defilement reste possible : trackpad,
+     molette, doigt, et glisser-deposer a la souris gere dans frise.astro). */
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.tree-wrap::-webkit-scrollbar { display: none; }
+.tree-wrap.is-dragging { cursor: grabbing; user-select: none; }
+.tree-wrap.is-dragging .tree-pill { cursor: grabbing; }
 .tree-lines { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
 .tree-line { fill: none; stroke: var(--color-border); stroke-width: 1.3px; }
 

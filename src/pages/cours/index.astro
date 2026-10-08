@@ -5,98 +5,313 @@ import { loadAllCourses } from "../../lib/data.mjs";
 const base = import.meta.env.BASE_URL;
 const allCourses = loadAllCourses();
 
-const filieres = [...new Set(allCourses.map((c) => c.filiere))].sort();
-const nomsCours = [...new Set(allCourses.map((c) => c.intitule))].sort();
-
 // On serialise les cours pour le filtrage cote client (island vanilla JS).
-const coursesJson = JSON.stringify(
-  allCourses.map((c) => ({
-    filiere: c.filiere,
-    intitule: c.intitule,
-    annee: c.annee,
-    period: c.period,
-    volumeHoraire: c.volumeHoraire,
-    hasPdf: c.hasPdf,
-    pdfUrl: c.pdfRelPath ? `${base}/data/${encodeURI(c.pdfRelPath)}` : null,
-  }))
-);
+// Passe par define:vars (jamais par une balise <script type="application/json">
+// avec interpolation : Astro echappe le HTML et corrompt le JSON).
+const coursesData = allCourses.map((c) => ({
+  filiere: c.filiere,
+  intitule: c.intitule,
+  annee: c.annee,
+  period: c.period,
+  volumeHoraire: c.volumeHoraire,
+  hasPdf: c.hasPdf,
+  pdfUrl: c.pdfRelPath ? `${base}/data/${encodeURI(c.pdfRelPath)}` : null,
+}));
 ---
 
-<Layout title="Cours" protected={true}>
-  <h1>Section Cours</h1>
-  <p>
-    Recherche transversale, independante des annees et promotions. Filtre par
-    filiere et/ou par intitule de cours.
-  </p>
+<Layout title="Cours" protected={true} navActive="cours" fullBleed={true}>
+  <header class="cours-page-head">
+    <h1>Section Cours</h1>
+    <p>
+      Recherche transversale, indépendante des années et des promotions. Fais
+      tourner les roues pour filtrer par filière et/ou par cours.
+    </p>
+  </header>
 
-  <div class="cours-selector">
-    <label>
-      Filiere
-      <select id="filter-filiere">
-        <option value="">Toutes</option>
-        {filieres.map((f) => <option value={f}>{f}</option>)}
-      </select>
-    </label>
+  <div class="container cours-body">
+    <div class="wheel-panel">
+      <div class="wheel-field">
+        <div class="wheel-label" id="label-filiere">Filière</div>
+        <div class="wheel-box">
+          <div class="wheel-band"></div>
+          <div
+            class="wheel"
+            id="wheel-filiere"
+            role="listbox"
+            tabindex="0"
+            aria-labelledby="label-filiere"
+          >
+          </div>
+        </div>
+      </div>
 
-    <label>
-      Cours
-      <select id="filter-cours">
-        <option value="">Tous</option>
-        {nomsCours.map((n) => <option value={n}>{n}</option>)}
-      </select>
-    </label>
+      <div class="wheel-field">
+        <div class="wheel-label" id="label-cours">Cours</div>
+        <div class="wheel-box">
+          <div class="wheel-band"></div>
+          <div
+            class="wheel"
+            id="wheel-cours"
+            role="listbox"
+            tabindex="0"
+            aria-labelledby="label-cours"
+          >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="cours-count" class="cours-count" aria-live="polite"></div>
+    <div id="cours-results" class="cours-results"></div>
   </div>
 
-  <div id="cours-results" class="cours-results"></div>
-
-  <script define:vars={{ coursesJson }} is:inline>
-    var allCourses = JSON.parse(coursesJson);
-    var filiereSelect = document.getElementById("filter-filiere");
-    var coursSelect = document.getElementById("filter-cours");
+  <script define:vars={{ coursesData }} is:inline>
+    var allCourses = coursesData;
     var resultsEl = document.getElementById("cours-results");
+    var countEl = document.getElementById("cours-count");
+    var reducedMotion =
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    function render() {
-      var filiere = filiereSelect.value;
-      var cours = coursSelect.value;
+    // ---- Wheel picker (selecteur a tambour) ---------------------------
+    // Une liste verticale a defilement magnetique (scroll-snap) : l'element
+    // centre dans la bande est l'element selectionne. Deux espaceurs CSS
+    // (::before/::after) de 2 elements permettent de centrer le premier et
+    // le dernier. L'index se deduit de scrollTop / hauteur d'element.
+    // Commandes : molette, doigt, clic sur un element, clavier, glisser souris.
+    function createWheel(root, onChange) {
+      var options = [];
+      var index = 0;
+      var itemH = 44;
+      var settleTimer = null;
+      var paintQueued = false;
+      var drag = null;
+      var dragMoved = false;
 
-      var filtered = allCourses.filter(function (c) {
-        return (
-          (!filiere || c.filiere === filiere) &&
-          (!cours || c.intitule === cours)
-        );
+      function clamp(i) {
+        return Math.max(0, Math.min(options.length - 1, i));
+      }
+
+      function measure() {
+        var first = root.querySelector(".wheel-item");
+        if (first && first.offsetHeight) itemH = first.offsetHeight;
+      }
+
+      // Estompe et reduit les elements selon leur distance au centre.
+      function paint() {
+        paintQueued = false;
+        var pos = root.scrollTop / itemH;
+        var items = root.children;
+        for (var i = 0; i < items.length; i++) {
+          var d = Math.abs(i - pos);
+          items[i].style.opacity = Math.max(0.2, 1 - d * 0.32);
+          items[i].style.transform = "scale(" + Math.max(0.75, 1 - d * 0.09) + ")";
+        }
+      }
+
+      function markSelected() {
+        var items = root.children;
+        for (var i = 0; i < items.length; i++) {
+          items[i].classList.toggle("is-selected", i === index);
+          items[i].setAttribute("aria-selected", i === index ? "true" : "false");
+        }
+        if (items[index]) root.setAttribute("aria-activedescendant", items[index].id);
+      }
+
+      function commit(i) {
+        i = clamp(i);
+        if (i === index || options.length === 0) return;
+        index = i;
+        markSelected();
+        onChange(options[index].value);
+      }
+
+      function goTo(i, smooth) {
+        i = clamp(i);
+        root.scrollTo({ top: i * itemH, behavior: smooth && !reducedMotion ? "smooth" : "auto" });
+        commit(i);
+      }
+
+      // Remplace les options ; garde la valeur selectedValue si elle existe encore.
+      function setOptions(opts, selectedValue) {
+        options = opts;
+        root.innerHTML = "";
+        opts.forEach(function (o, i) {
+          var it = document.createElement("div");
+          it.className = "wheel-item";
+          it.id = root.id + "-opt-" + i;
+          it.setAttribute("role", "option");
+          it.setAttribute("data-index", String(i));
+          it.textContent = o.label;
+          root.appendChild(it);
+        });
+        measure();
+        var idx = 0;
+        opts.forEach(function (o, i) {
+          if (o.value === selectedValue) idx = i;
+        });
+        index = idx;
+        markSelected();
+        root.scrollTop = idx * itemH;
+        paint();
+      }
+
+      root.addEventListener("scroll", function () {
+        if (!paintQueued) {
+          paintQueued = true;
+          requestAnimationFrame(paint);
+        }
+        // Une fois le defilement (et l'aimantation) termine, on valide l'element centre.
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(function () {
+          commit(Math.round(root.scrollTop / itemH));
+        }, 100);
       });
 
+      root.addEventListener("click", function (e) {
+        var item = e.target.closest ? e.target.closest(".wheel-item") : null;
+        if (item) goTo(parseInt(item.getAttribute("data-index"), 10), true);
+      });
+
+      root.addEventListener("keydown", function (e) {
+        var step = { ArrowDown: 1, ArrowUp: -1, PageDown: 2, PageUp: -2 }[e.key];
+        if (step !== undefined) goTo(index + step, true);
+        else if (e.key === "Home") goTo(0, true);
+        else if (e.key === "End") goTo(options.length - 1, true);
+        else return;
+        e.preventDefault();
+      });
+
+      // Glisser a la souris. L'aimantation est coupee pendant le geste
+      // (sinon elle lutte contre le deplacement) puis rendue au relachement.
+      root.addEventListener("pointerdown", function (e) {
+        if (e.pointerType === "touch" || e.button !== 0) return;
+        drag = { y: e.clientY, top: root.scrollTop };
+        dragMoved = false;
+      });
+      window.addEventListener("pointermove", function (e) {
+        if (!drag) return;
+        var dy = e.clientY - drag.y;
+        if (!dragMoved && Math.abs(dy) > 5) {
+          dragMoved = true;
+          root.style.scrollSnapType = "none";
+          root.classList.add("is-dragging");
+        }
+        if (dragMoved) root.scrollTop = drag.top - dy;
+      });
+      window.addEventListener("pointerup", function () {
+        if (!drag) return;
+        drag = null;
+        if (dragMoved) {
+          root.classList.remove("is-dragging");
+          root.style.scrollSnapType = "";
+          goTo(Math.round(root.scrollTop / itemH), true);
+        }
+      });
+      // Un glisser ne doit pas etre pris pour un clic sur un element.
+      root.addEventListener(
+        "click",
+        function (e) {
+          if (dragMoved) {
+            e.stopPropagation();
+            dragMoved = false;
+          }
+        },
+        true
+      );
+
+      return {
+        setOptions: setOptions,
+        value: function () {
+          return options.length ? options[index].value : "";
+        },
+      };
+    }
+
+    // ---- Donnees et rendu ----------------------------------------------
+    function unique(list) {
+      return list.filter(function (v, i) {
+        return list.indexOf(v) === i;
+      });
+    }
+
+    function filiereOptions() {
+      var names = unique(allCourses.map(function (c) { return c.filiere; })).sort();
+      return [{ value: "", label: "Toutes" }].concat(
+        names.map(function (n) { return { value: n, label: n }; })
+      );
+    }
+
+    // La roue "Cours" ne propose que les cours de la filiere choisie.
+    function coursOptions(filiere) {
+      var names = unique(
+        allCourses
+          .filter(function (c) { return !filiere || c.filiere === filiere; })
+          .map(function (c) { return c.intitule; })
+      ).sort();
+      return [{ value: "", label: "Tous" }].concat(
+        names.map(function (n) { return { value: n, label: n }; })
+      );
+    }
+
+    function text(tag, cls, str) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      e.textContent = str;
+      return e;
+    }
+
+    function render() {
+      var filiere = filiereWheel.value();
+      var cours = coursWheel.value();
+      var filtered = allCourses.filter(function (c) {
+        return (!filiere || c.filiere === filiere) && (!cours || c.intitule === cours);
+      });
+
+      countEl.textContent = filtered.length + " cours"; // "cours" est invariable
+      resultsEl.innerHTML = "";
+
       if (filtered.length === 0) {
-        resultsEl.innerHTML = '<p class="cours-empty">Aucun cours ne correspond a ce filtre.</p>';
+        resultsEl.appendChild(text("p", "cours-empty", "Aucun cours ne correspond à ce filtre."));
         return;
       }
 
-      resultsEl.innerHTML = filtered
-        .map(function (c) {
-          var pdfLink = c.hasPdf
-            ? '<a class="btn" style="padding:0.4rem 0.9rem;font-size:0.85rem;" href="' +
-              c.pdfUrl +
-              '" target="_blank" rel="noopener">Voir le support</a>'
-            : '<span class="cours-empty" style="padding:0;">PDF indisponible</span>';
+      // Construction par le DOM (textContent) : un nom de cours contenant
+      // "<" ou "&" ne peut pas casser la page.
+      filtered.forEach(function (c) {
+        var card = document.createElement("div");
+        card.className = "cours-result-card";
 
-          return (
-            '<div class="cours-result-card">' +
-            '<div>' +
-            '<div class="title">' + c.intitule + '</div>' +
-            '<div class="meta">' +
-            c.filiere + ' &middot; Annee ' + c.annee + ' &middot; Promo ' + c.period +
-            (c.volumeHoraire ? ' &middot; ' + c.volumeHoraire + 'h' : '') +
-            '</div>' +
-            '</div>' +
-            pdfLink +
-            '</div>'
-          );
-        })
-        .join("");
+        var info = document.createElement("div");
+        info.appendChild(text("div", "title", c.intitule));
+        var meta =
+          c.filiere + " · Année " + c.annee + " · Promo " + c.period +
+          (c.volumeHoraire ? " · " + c.volumeHoraire + " h" : "");
+        info.appendChild(text("div", "meta", meta));
+        card.appendChild(info);
+
+        if (c.hasPdf && c.pdfUrl) {
+          var link = text("a", "btn", "Voir le support");
+          link.href = c.pdfUrl;
+          link.target = "_blank";
+          link.rel = "noopener";
+          card.appendChild(link);
+        } else {
+          card.appendChild(text("span", "cours-empty", "PDF indisponible"));
+        }
+        resultsEl.appendChild(card);
+      });
     }
 
-    filiereSelect.addEventListener("change", render);
-    coursSelect.addEventListener("change", render);
+    var coursWheel = createWheel(document.getElementById("wheel-cours"), render);
+    var filiereWheel = createWheel(document.getElementById("wheel-filiere"), function (filiere) {
+      // Changer de filiere recompose la roue "Cours" (retour sur "Tous"
+      // si le cours choisi n'existe pas dans cette filiere).
+      coursWheel.setOptions(coursOptions(filiere), coursWheel.value());
+      render();
+    });
+
+    filiereWheel.setOptions(filiereOptions(), "");
+    coursWheel.setOptions(coursOptions(""), "");
     render();
   </script>
 </Layout>

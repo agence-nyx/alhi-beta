@@ -74,9 +74,9 @@ const coursesData = allCourses.map((c) => ({
 
     // ---- Wheel picker (selecteur a tambour) ---------------------------
     // Une liste verticale a defilement magnetique (scroll-snap) : l'element
-    // centre dans la bande est l'element selectionne. Deux espaceurs CSS
-    // (::before/::after) de 2 elements permettent de centrer le premier et
-    // le dernier. L'index se deduit de scrollTop / hauteur d'element.
+    // aligne en haut, dans la bande, est l'element selectionne. Un espaceur
+    // CSS (::after) de 2 elements permet d'amener le dernier tout en haut.
+    // L'index se deduit de scrollTop / hauteur d'element.
     // Commandes : molette, doigt, clic sur un element, clavier, glisser souris.
     function createWheel(root, onChange) {
       var options = [];
@@ -279,24 +279,24 @@ const coursesData = allCourses.map((c) => ({
       filtered.forEach(function (c) {
         var card = document.createElement("div");
         card.className = "cours-result-card";
+        card.appendChild(text("div", "cours-card-tag", c.filiere + " · Année " + c.annee));
+        card.appendChild(text("div", "title", c.intitule));
+        card.appendChild(
+          text("div", "meta", "Promo " + c.period + (c.volumeHoraire ? " · " + c.volumeHoraire + " h" : ""))
+        );
 
-        var info = document.createElement("div");
-        info.appendChild(text("div", "title", c.intitule));
-        var meta =
-          c.filiere + " · Année " + c.annee + " · Promo " + c.period +
-          (c.volumeHoraire ? " · " + c.volumeHoraire + " h" : "");
-        info.appendChild(text("div", "meta", meta));
-        card.appendChild(info);
-
+        var action = document.createElement("div");
+        action.className = "cours-card-action";
         if (c.hasPdf && c.pdfUrl) {
           var link = text("a", "btn", "Voir le support");
           link.href = c.pdfUrl;
           link.target = "_blank";
           link.rel = "noopener";
-          card.appendChild(link);
+          action.appendChild(link);
         } else {
-          card.appendChild(text("span", "cours-empty", "PDF indisponible"));
+          action.appendChild(text("span", "meta", "PDF indisponible"));
         }
+        card.appendChild(action);
         resultsEl.appendChild(card);
       });
     }

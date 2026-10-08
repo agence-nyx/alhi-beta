@@ -449,47 +449,45 @@ main.container {
 
 .cours-body { padding-bottom: 5rem; }
 
-.wheel-panel { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.5rem; margin: 0 auto 2rem; }
-.wheel-field { width: 300px; max-width: 100%; }
+.wheel-panel { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.5rem 2rem; margin: 0 auto 2rem; }
+.wheel-field { flex: 1 1 240px; max-width: 340px; }
 .wheel-label {
   font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em;
-  text-align: center; margin-bottom: 0.6rem; color: var(--color-soft);
+  margin-bottom: 0.4rem; color: var(--color-soft);
 }
 
-.wheel-box {
-  --wheel-item: 44px;
-  position: relative; overflow: hidden;
-  background: var(--color-card-bg); border: 1px solid var(--color-border); border-radius: 16px;
-}
-/* Bande de selection au centre, au-dessus de la liste (ne capte pas les clics). */
+/* Style epure : pas de carte ; la selection est encadree par deux traits fins,
+   l'element selectionne est en gras et pleine couleur, les autres s'estompent. */
+.wheel-box { --wheel-item: 50px; position: relative; overflow: hidden; }
 .wheel-band {
-  position: absolute; z-index: 2; left: 0.6rem; right: 0.6rem; top: 50%;
+  position: absolute; z-index: 2; left: 0; right: 0; top: 50%;
   height: var(--wheel-item); transform: translateY(-50%);
-  border: 1px solid var(--color-red); border-radius: 999px;
-  background: rgba(173, 35, 58, 0.06); pointer-events: none;
+  border-top: 1px solid rgba(10, 10, 10, 0.22); border-bottom: 1px solid rgba(10, 10, 10, 0.22);
+  pointer-events: none;
 }
 .wheel {
   height: calc(var(--wheel-item) * 5);
   overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain;
   scrollbar-width: none; -ms-overflow-style: none;
   cursor: grab; outline: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 72%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 28%, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 25%, #000 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 25%, #000 75%, transparent 100%);
 }
 .wheel::-webkit-scrollbar { display: none; }
 /* Espaceurs : permettent de centrer le premier et le dernier element. */
 .wheel::before, .wheel::after { content: ""; display: block; height: calc(var(--wheel-item) * 2); }
 .wheel.is-dragging { cursor: grabbing; user-select: none; }
-.wheel:focus-visible { box-shadow: inset 0 0 0 2px var(--color-red); border-radius: 16px; }
+.wheel:focus-visible { outline: 2px solid var(--color-red); outline-offset: 2px; }
 
 .wheel-item {
-  height: var(--wheel-item); display: flex; align-items: center; justify-content: center;
-  padding: 0 1rem; scroll-snap-align: center; user-select: none;
-  font-family: var(--font-main); font-size: 1rem; text-transform: none; text-align: center;
+  height: var(--wheel-item); display: flex; align-items: center; justify-content: flex-start;
+  padding: 0; scroll-snap-align: center; user-select: none;
+  font-family: var(--font-main); font-size: 1.05rem; font-weight: 400; text-transform: none; text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
-  will-change: transform, opacity;
+  color: var(--color-soft); transition: color 0.15s;
 }
-.wheel-item.is-selected { color: var(--color-red); font-weight: 600; }
+.wheel-item:hover { color: var(--color-text); }
+.wheel-item.is-selected { color: var(--color-text); font-weight: 600; }
 
 .cours-count {
   font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em;

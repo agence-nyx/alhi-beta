@@ -96,15 +96,14 @@ const coursesData = allCourses.map((c) => ({
         if (first && first.offsetHeight) itemH = first.offsetHeight;
       }
 
-      // Estompe et reduit les elements selon leur distance au centre.
+      // Estompe les elements selon leur distance au centre (la taille ne
+      // change pas : le texte reste net et aligne).
       function paint() {
         paintQueued = false;
         var pos = root.scrollTop / itemH;
         var items = root.children;
         for (var i = 0; i < items.length; i++) {
-          var d = Math.abs(i - pos);
-          items[i].style.opacity = Math.max(0.2, 1 - d * 0.32);
-          items[i].style.transform = "scale(" + Math.max(0.75, 1 - d * 0.09) + ")";
+          items[i].style.opacity = Math.max(0.3, 1 - Math.abs(i - pos) * 0.4);
         }
       }
 

@@ -449,68 +449,69 @@ main.container {
 
 .cours-body { padding-bottom: 5rem; }
 
-.wheel-panel { display: flex; justify-content: center; flex-wrap: wrap; gap: 1.5rem 2rem; margin: 0 auto 2rem; }
-.wheel-field { flex: 1 1 240px; max-width: 340px; }
-.wheel-label {
-  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em;
-  margin-bottom: 0.5rem; color: var(--color-soft);
+/* Roues (selecteur a tambour) : 3 lignes, selection au centre entre deux traits
+   fins, element selectionne en gras ; pas de carte ni de fond. */
+.wheel-panel {
+  display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px;
+  width: 100%; max-width: 480px; margin: 0 auto 2.25rem;
 }
-
-/* Style epure : pas de carte ; la selection est la premiere ligne de la roue,
-   encadree par deux traits fins ; l'element selectionne est en gras et pleine
-   couleur, les suivants s'estompent vers le bas. Aucun vide au-dessus. */
-.wheel-box { --wheel-item: 50px; position: relative; overflow: hidden; }
+.wheel-box { --wheel-item: 50px; position: relative; overflow: hidden; height: calc(var(--wheel-item) * 3); }
 .wheel-band {
-  position: absolute; z-index: 2; left: 0; right: 0; top: 0; height: var(--wheel-item);
+  position: absolute; z-index: 2; left: 0; right: 0; top: 50%;
+  height: var(--wheel-item); transform: translateY(-50%);
   border-top: 1px solid rgba(10, 10, 10, 0.22); border-bottom: 1px solid rgba(10, 10, 10, 0.22);
   pointer-events: none;
 }
 .wheel {
-  height: calc(var(--wheel-item) * 3);
-  overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain;
-  scrollbar-width: none; -ms-overflow-style: none;
-  cursor: grab; outline: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 60%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0, #000 60%, transparent 100%);
+  height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain;
+  scrollbar-width: none; -ms-overflow-style: none; cursor: grab; outline: none;
 }
 .wheel::-webkit-scrollbar { display: none; }
-/* Espaceur final : permet d'amener le dernier element tout en haut. */
-.wheel::after { content: ""; display: block; height: calc(var(--wheel-item) * 2); }
+/* Espaceurs d'un element de chaque cote : centrent le premier et le dernier. */
+.wheel::before, .wheel::after { content: ""; display: block; height: var(--wheel-item); }
 .wheel.is-dragging { cursor: grabbing; user-select: none; }
-.wheel:focus-visible { outline: 2px solid var(--color-red); outline-offset: 2px; }
+.wheel:focus-visible { outline: 2px solid var(--color-red); outline-offset: -2px; }
 
 .wheel-item {
   height: var(--wheel-item); display: flex; align-items: center; justify-content: flex-start;
-  padding: 0; scroll-snap-align: start; user-select: none;
-  font-family: var(--font-main); font-size: 1.05rem; font-weight: 400; text-transform: none; text-align: left;
+  scroll-snap-align: center; scroll-snap-stop: always; user-select: none;
+  font-family: var(--font-main); font-size: 1.1rem; font-weight: 400; text-transform: none; text-align: left;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
-  color: var(--color-soft); transition: color 0.15s;
+  color: var(--color-soft); opacity: 0.7;
 }
-.wheel-item:hover { color: var(--color-text); }
-.wheel-item.is-selected { color: var(--color-text); font-weight: 600; }
+.wheel-item.is-selected { color: var(--color-text); font-weight: 700; opacity: 1; }
 
-.cours-count {
-  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.09em;
-  color: var(--color-soft); text-align: center; margin-bottom: 1rem;
-}
-
+/* Cartes des cours de la filiere choisie : la carte du cours selectionne dans
+   la roue est mise en avant, les autres sont estompees. --c / --t (couleur et
+   teinte de la filiere) sont posees en ligne par le script. */
 .cours-results {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem;
-  max-width: 960px; margin: 0 auto;
+  width: 100%; max-width: 760px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px;
 }
-
-/* Meme langage visuel que les cartes de personnes de la Frise :
-   fond creme, bordure fine, filet rouge en haut, coins arrondis. */
-.cours-result-card {
-  display: flex; flex-direction: column; gap: 0.35rem;
-  background: var(--color-card-bg); border: 1px solid var(--color-border);
-  border-top: 2px solid var(--color-red); border-radius: 12px; padding: 1.1rem 1.25rem 1.25rem;
+.cours-card {
+  --c: var(--color-red); --t: rgba(173, 35, 58, 0.12);
+  display: flex; flex-direction: column; justify-content: space-between; gap: 30px;
+  min-height: 160px; padding: 18px; cursor: pointer; opacity: 0.55;
+  background: var(--color-card-bg); border: 2px solid var(--color-border); border-radius: 22px;
+  transition: opacity 0.25s, transform 0.25s, border-color 0.25s, box-shadow 0.25s;
 }
-.cours-card-tag { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.09em; color: var(--color-red); }
-.cours-result-card .title { font: 500 1.4rem/1.2 var(--font-serif); text-transform: none; margin-top: 0.2rem; }
-.cours-result-card .meta { font-family: var(--font-mono); font-size: 0.74rem; color: var(--color-soft); text-transform: none; }
-.cours-card-action { margin-top: auto; padding-top: 1rem; }
-.cours-result-card .btn { padding: 0.45rem 1rem; font-size: 0.85rem; }
+.cours-card:hover { opacity: 0.85; }
+.cours-card.sel { opacity: 1; border-color: var(--c); transform: translateY(-4px); box-shadow: 0 18px 30px -18px var(--c); }
+.cours-chip {
+  align-self: flex-start; display: flex; align-items: center; gap: 7px;
+  padding: 4px 11px 4px 9px; border-radius: 999px; background: var(--t); color: var(--c);
+  font-size: 0.78rem; font-weight: 700;
+}
+.cours-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.cours-card-title { display: block; font-weight: 700; font-size: 1.2rem; line-height: 1.15; text-transform: none; }
+.cours-card-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; color: var(--color-soft); font-size: 0.85rem; text-transform: none; }
+.cours-card-meta b { color: var(--color-text); font-weight: 600; }
+.cours-card-link {
+  display: inline-block; margin-top: 12px; color: var(--c); font-size: 0.85rem; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.cours-card-link.is-off { color: var(--color-soft); text-decoration: none; font-weight: 400; font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .cours-card { transition: none; } }
 
 .cours-empty { color: var(--color-soft); font-style: italic; padding: 1rem 0; text-align: center; grid-column: 1 / -1; }
 

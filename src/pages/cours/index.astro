@@ -23,65 +23,53 @@ const coursesData = allCourses.map((c) => ({
   <header class="cours-page-head">
     <h1>Section Cours</h1>
     <p>
-      Recherche transversale, indépendante des années et des promotions. Fais
-      tourner les roues pour filtrer par filière et/ou par cours.
+      Choisis une filière, puis un cours. Les supports sont classés par
+      promotion.
     </p>
   </header>
 
   <div class="container cours-body">
     <div class="wheel-panel">
-      <div class="wheel-field">
-        <div class="wheel-label" id="label-filiere">Filière</div>
-        <div class="wheel-box">
-          <div class="wheel-band"></div>
-          <div
-            class="wheel"
-            id="wheel-filiere"
-            role="listbox"
-            tabindex="0"
-            aria-labelledby="label-filiere"
-          >
-          </div>
-        </div>
+      <div class="wheel-box">
+        <div class="wheel-band"></div>
+        <div class="wheel" id="wheel-filiere" role="listbox" tabindex="0" aria-label="Filière"></div>
       </div>
-
-      <div class="wheel-field">
-        <div class="wheel-label" id="label-cours">Cours</div>
-        <div class="wheel-box">
-          <div class="wheel-band"></div>
-          <div
-            class="wheel"
-            id="wheel-cours"
-            role="listbox"
-            tabindex="0"
-            aria-labelledby="label-cours"
-          >
-          </div>
-        </div>
+      <div class="wheel-box">
+        <div class="wheel-band"></div>
+        <div class="wheel" id="wheel-cours" role="listbox" tabindex="0" aria-label="Cours"></div>
       </div>
     </div>
 
-    <div id="cours-count" class="cours-count" aria-live="polite"></div>
-    <div id="cours-results" class="cours-results"></div>
+    <div id="cours-results" class="cours-results" aria-live="polite"></div>
   </div>
 
   <script define:vars={{ coursesData }} is:inline>
     var allCourses = coursesData;
     var resultsEl = document.getElementById("cours-results");
-    var countEl = document.getElementById("cours-count");
     var reducedMotion =
       window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // Une couleur par filiere (dans l'ordre alphabetique), tiree de la
+    // palette du site : "c" = couleur pleine, "t" = teinte claire (pastille).
+    var PALETTE = [
+      { c: "#ad233a", t: "rgba(173, 35, 58, 0.12)" },
+      { c: "#1f6f6b", t: "rgba(31, 111, 107, 0.13)" },
+      { c: "#a8741a", t: "rgba(168, 116, 26, 0.15)" },
+      { c: "#3d4a8a", t: "rgba(61, 74, 138, 0.13)" },
+    ];
+
     // ---- Wheel picker (selecteur a tambour) ---------------------------
-    // Une liste verticale a defilement magnetique (scroll-snap) : l'element
-    // aligne en haut, dans la bande, est l'element selectionne. Un espaceur
-    // CSS (::after) de 2 elements permet d'amener le dernier tout en haut.
-    // L'index se deduit de scrollTop / hauteur d'element.
+    // Une liste verticale a defilement magnetique (scroll-snap) de 3 lignes :
+    // l'element au centre, entre les deux traits, est l'element selectionne.
+    // Un espaceur CSS d'un element de chaque cote (::before/::after) permet
+    // de centrer le premier et le dernier. L'index se deduit de
+    // scrollTop / hauteur d'element. Le gras suit le defilement en direct ;
+    // le changement n'est valide (onChange) qu'une fois le geste termine.
     // Commandes : molette, doigt, clic sur un element, clavier, glisser souris.
     function createWheel(root, onChange) {
       var options = [];
-      var index = 0;
-      var itemH = 44;
+      var index = 0; // dernier element valide (onChange deja appele)
+      var itemH = 50;
       var settleTimer = null;
       var paintQueued = false;
       var drag = null;
@@ -96,31 +84,26 @@ const coursesData = allCourses.map((c) => ({
         if (first && first.offsetHeight) itemH = first.offsetHeight;
       }
 
-      // Estompe les elements selon leur distance au centre (la taille ne
-      // change pas : le texte reste net et aligne).
-      function paint() {
-        paintQueued = false;
-        var pos = root.scrollTop / itemH;
+      // Met en avant l'element n (gras + couleur pleine).
+      function highlight(n) {
         var items = root.children;
         for (var i = 0; i < items.length; i++) {
-          items[i].style.opacity = Math.max(0.3, 1 - Math.abs(i - pos) * 0.4);
+          items[i].classList.toggle("is-selected", i === n);
+          items[i].setAttribute("aria-selected", i === n ? "true" : "false");
         }
+        if (items[n]) root.setAttribute("aria-activedescendant", items[n].id);
       }
 
-      function markSelected() {
-        var items = root.children;
-        for (var i = 0; i < items.length; i++) {
-          items[i].classList.toggle("is-selected", i === index);
-          items[i].setAttribute("aria-selected", i === index ? "true" : "false");
-        }
-        if (items[index]) root.setAttribute("aria-activedescendant", items[index].id);
+      function paint() {
+        paintQueued = false;
+        highlight(clamp(Math.round(root.scrollTop / itemH)));
       }
 
       function commit(i) {
         i = clamp(i);
         if (i === index || options.length === 0) return;
         index = i;
-        markSelected();
+        highlight(index);
         onChange(options[index].value);
       }
 
@@ -130,7 +113,7 @@ const coursesData = allCourses.map((c) => ({
         commit(i);
       }
 
-      // Remplace les options ; garde la valeur selectedValue si elle existe encore.
+      // Remplace les options ; selectedValue est la valeur a selectionner.
       function setOptions(opts, selectedValue) {
         options = opts;
         root.innerHTML = "";
@@ -149,9 +132,8 @@ const coursesData = allCourses.map((c) => ({
           if (o.value === selectedValue) idx = i;
         });
         index = idx;
-        markSelected();
+        highlight(idx);
         root.scrollTop = idx * itemH;
-        paint();
       }
 
       root.addEventListener("scroll", function () {
@@ -163,7 +145,7 @@ const coursesData = allCourses.map((c) => ({
         clearTimeout(settleTimer);
         settleTimer = setTimeout(function () {
           commit(Math.round(root.scrollTop / itemH));
-        }, 100);
+        }, 90);
       });
 
       root.addEventListener("click", function (e) {
@@ -220,38 +202,46 @@ const coursesData = allCourses.map((c) => ({
 
       return {
         setOptions: setOptions,
-        value: function () {
-          return options.length ? options[index].value : "";
+        select: function (i) {
+          goTo(i, true);
         },
       };
     }
 
-    // ---- Donnees et rendu ----------------------------------------------
+    // ---- Donnees -------------------------------------------------------
     function unique(list) {
       return list.filter(function (v, i) {
         return list.indexOf(v) === i;
       });
     }
 
-    function filiereOptions() {
-      var names = unique(allCourses.map(function (c) { return c.filiere; })).sort();
-      return [{ value: "", label: "Toutes" }].concat(
-        names.map(function (n) { return { value: n, label: n }; })
-      );
+    // [{ name, courses: [...] }] : une entree par filiere, ses cours tries par
+    // intitule puis par promo (la plus recente d'abord). Un meme cours donne
+    // par plusieurs promos garde une carte par promo ; sa roue ajoute alors
+    // la promo au libelle pour les distinguer.
+    function buildModel() {
+      var names = unique(allCourses.map(function (c) { return c.filiere; })).sort(function (a, b) {
+        return a.localeCompare(b, "fr");
+      });
+      return names.map(function (name) {
+        var list = allCourses
+          .filter(function (c) { return c.filiere === name; })
+          .sort(function (a, b) {
+            return (
+              a.intitule.localeCompare(b.intitule, "fr") ||
+              String(b.period).localeCompare(String(a.period))
+            );
+          });
+        var counts = {};
+        list.forEach(function (c) { counts[c.intitule] = (counts[c.intitule] || 0) + 1; });
+        list.forEach(function (c) {
+          c.label = counts[c.intitule] > 1 ? c.intitule + " · " + c.period : c.intitule;
+        });
+        return { name: name, courses: list };
+      });
     }
 
-    // La roue "Cours" ne propose que les cours de la filiere choisie.
-    function coursOptions(filiere) {
-      var names = unique(
-        allCourses
-          .filter(function (c) { return !filiere || c.filiere === filiere; })
-          .map(function (c) { return c.intitule; })
-      ).sort();
-      return [{ value: "", label: "Tous" }].concat(
-        names.map(function (n) { return { value: n, label: n }; })
-      );
-    }
-
+    // ---- Rendu ---------------------------------------------------------
     function text(tag, cls, str) {
       var e = document.createElement(tag);
       if (cls) e.className = cls;
@@ -259,58 +249,99 @@ const coursesData = allCourses.map((c) => ({
       return e;
     }
 
-    function render() {
-      var filiere = filiereWheel.value();
-      var cours = coursWheel.value();
-      var filtered = allCourses.filter(function (c) {
-        return (!filiere || c.filiere === filiere) && (!cours || c.intitule === cours);
-      });
+    // <span>avant <b>valeur</b> apres</span>, construit par le DOM.
+    function metaItem(before, strong, after) {
+      var s = document.createElement("span");
+      if (before) s.appendChild(document.createTextNode(before));
+      var b = document.createElement("b");
+      b.textContent = strong;
+      s.appendChild(b);
+      if (after) s.appendChild(document.createTextNode(after));
+      return s;
+    }
 
-      countEl.textContent = filtered.length + " cours"; // "cours" est invariable
+    var model = buildModel();
+    var f = 0; // filiere selectionnee
+    var c = 0; // cours selectionne dans cette filiere
+
+    function renderCards() {
+      var color = PALETTE[f % PALETTE.length];
       resultsEl.innerHTML = "";
-
-      if (filtered.length === 0) {
-        resultsEl.appendChild(text("p", "cours-empty", "Aucun cours ne correspond à ce filtre."));
-        return;
-      }
-
       // Construction par le DOM (textContent) : un nom de cours contenant
       // "<" ou "&" ne peut pas casser la page.
-      filtered.forEach(function (c) {
-        var card = document.createElement("div");
-        card.className = "cours-result-card";
-        card.appendChild(text("div", "cours-card-tag", c.filiere + " · Année " + c.annee));
-        card.appendChild(text("div", "title", c.intitule));
-        card.appendChild(
-          text("div", "meta", "Promo " + c.period + (c.volumeHoraire ? " · " + c.volumeHoraire + " h" : ""))
-        );
+      model[f].courses.forEach(function (course, i) {
+        var card = document.createElement("article");
+        card.className = "cours-card" + (i === c ? " sel" : "");
+        card.setAttribute("data-i", String(i));
+        card.style.setProperty("--c", color.c);
+        card.style.setProperty("--t", color.t);
 
-        var action = document.createElement("div");
-        action.className = "cours-card-action";
-        if (c.hasPdf && c.pdfUrl) {
-          var link = text("a", "btn", "Voir le support");
-          link.href = c.pdfUrl;
+        card.appendChild(text("span", "cours-chip", model[f].name));
+
+        var body = document.createElement("div");
+        body.appendChild(text("span", "cours-card-title", course.intitule));
+        var meta = document.createElement("div");
+        meta.className = "cours-card-meta";
+        meta.appendChild(metaItem("Année ", String(course.annee), ""));
+        meta.appendChild(metaItem("Promo ", String(course.period), ""));
+        if (course.volumeHoraire) meta.appendChild(metaItem("", String(course.volumeHoraire), " h"));
+        body.appendChild(meta);
+
+        if (course.hasPdf && course.pdfUrl) {
+          var link = text("a", "cours-card-link", "Voir le support →");
+          link.href = course.pdfUrl;
           link.target = "_blank";
           link.rel = "noopener";
-          action.appendChild(link);
+          body.appendChild(link);
         } else {
-          action.appendChild(text("span", "meta", "PDF indisponible"));
+          body.appendChild(text("span", "cours-card-link is-off", "PDF indisponible"));
         }
-        card.appendChild(action);
+        card.appendChild(body);
         resultsEl.appendChild(card);
       });
     }
 
-    var coursWheel = createWheel(document.getElementById("wheel-cours"), render);
-    var filiereWheel = createWheel(document.getElementById("wheel-filiere"), function (filiere) {
-      // Changer de filiere recompose la roue "Cours" (retour sur "Tous"
-      // si le cours choisi n'existe pas dans cette filiere).
-      coursWheel.setOptions(coursOptions(filiere), coursWheel.value());
-      render();
+    // Met en avant la carte du cours choisi dans la roue.
+    function markSelected() {
+      var cards = resultsEl.children;
+      for (var i = 0; i < cards.length; i++) cards[i].classList.toggle("sel", i === c);
+    }
+
+    function setCoursOptions() {
+      coursWheel.setOptions(
+        model[f].courses.map(function (course, i) { return { value: i, label: course.label }; }),
+        0
+      );
+    }
+
+    var coursWheel = createWheel(document.getElementById("wheel-cours"), function (i) {
+      c = i;
+      markSelected();
+    });
+    var filiereWheel = createWheel(document.getElementById("wheel-filiere"), function (i) {
+      if (i === f) return;
+      f = i;
+      c = 0;
+      setCoursOptions();
+      renderCards();
     });
 
-    filiereWheel.setOptions(filiereOptions(), "");
-    coursWheel.setOptions(coursOptions(""), "");
-    render();
+    // Cliquer une carte amene la roue "Cours" sur ce cours (hors lien PDF).
+    resultsEl.addEventListener("click", function (e) {
+      if (e.target.closest("a")) return;
+      var card = e.target.closest(".cours-card");
+      if (card) coursWheel.select(parseInt(card.getAttribute("data-i"), 10));
+    });
+
+    if (model.length === 0) {
+      resultsEl.appendChild(text("p", "cours-empty", "Aucun cours n'est encore archivé."));
+    } else {
+      filiereWheel.setOptions(
+        model.map(function (m, i) { return { value: i, label: m.name }; }),
+        0
+      );
+      setCoursOptions();
+      renderCards();
+    }
   </script>
 </Layout>
